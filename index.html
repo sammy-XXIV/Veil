@@ -1184,6 +1184,7 @@
       <div class="nav-logo-icon" style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:-0.5px">VL</div>
       <span style="font-family:'Instrument Serif',serif;font-size:20px;font-weight:400;letter-spacing:-0.3px">Veil</span>
       <span class="nav-badge">SEPOLIA</span>
+      <span class="nav-badge" id="fhe-status" style="color:var(--text3);border-color:var(--border)">FHE Loading...</span>
     </div>
     <div class="nav-right">
       <div class="price-ticker" id="price-ticker">
@@ -1707,6 +1708,9 @@ function onConnected() {
   loadStats();
   loadWalletBalance();
 
+  // Initialize FHEVM Relayer SDK
+  initFhevmInstance();
+
   // Listen for account changes
   window.ethereum.on('accountsChanged', (accounts) => {
     state.address = accounts[0];
@@ -1714,6 +1718,30 @@ function onConnected() {
     loadPosition();
     loadWalletBalance();
   });
+}
+
+async function initFhevmInstance() {
+  try {
+    // Wait for SDK to load if not ready yet
+    if (!window.__zamaSdk) {
+      await new Promise(resolve => window.addEventListener('zama-sdk-ready', resolve, { once: true }));
+    }
+    const { createInstance, SepoliaConfig } = window.__zamaSdk;
+    state.fhevmInstance = await createInstance({
+      ...SepoliaConfig,
+      network: window.ethereum,
+    });
+    console.log('FHEVM Relayer SDK initialized');
+    const statusEl = document.getElementById('fhe-status');
+    if (statusEl) { statusEl.textContent = 'FHE Ready'; statusEl.style.color = 'var(--green)'; statusEl.style.borderColor = 'rgba(16,185,129,0.3)'; }
+    // Reload position now that we can decrypt
+    loadPosition();
+  } catch (e) {
+    console.warn('FHEVM SDK init failed:', e.message);
+    state.fhevmInstance = null;
+    const statusEl = document.getElementById('fhe-status');
+    if (statusEl) { statusEl.textContent = 'FHE Unavailable'; statusEl.style.color = 'var(--red)'; }
+  }
 }
 
 // 
@@ -1837,18 +1865,20 @@ async function handleDeposit() {
     const amountWei = ethers.parseEther(amount.toString());
     const amountU64 = BigInt(amountWei.toString());
 
-    // Encrypt using FHEVM SDK
-    let encInput, inputProof;
-    if (state.fhevmInstance) {
-      const encrypted = await state.fhevmInstance
-        .createEncryptedInput(CONFIG.CONTRACT_ADDRESS, state.address)
-        .add64(amountU64)
-        .encrypt();
-      encInput = encrypted.handles[0];
-      inputProof = encrypted.inputProof;
-    } else {
-      throw new Error('FHEVM instance not initialized');
+    // Encrypt amount using Zama FHEVM Relayer SDK
+    if (!state.fhevmInstance) {
+      // Try to init if not ready
+      await initFhevmInstance();
+      if (!state.fhevmInstance) throw new Error('FHE encryption not ready. Please wait and try again.');
     }
+
+    const encryptedInput = await state.fhevmInstance
+      .createEncryptedInput(CONFIG.CONTRACT_ADDRESS, state.address)
+      .add64(amountU64)
+      .encrypt();
+
+    const encInput = encryptedInput.handles[0];
+    const inputProof = encryptedInput.inputProof;
 
     const tx = await state.contract.openPosition(encInput, inputProof, { value: amountWei });
     updateLastTx('pending', 'Confirming...');
@@ -1883,17 +1913,18 @@ async function handleBorrow() {
     const amountWei = ethers.parseEther(amount.toString());
     const amountU64 = BigInt(amountWei.toString());
 
-    let encInput, inputProof;
-    if (state.fhevmInstance) {
-      const encrypted = await state.fhevmInstance
-        .createEncryptedInput(CONFIG.CONTRACT_ADDRESS, state.address)
-        .add64(amountU64)
-        .encrypt();
-      encInput = encrypted.handles[0];
-      inputProof = encrypted.inputProof;
-    } else {
-      throw new Error('FHEVM instance not initialized');
+    if (!state.fhevmInstance) {
+      await initFhevmInstance();
+      if (!state.fhevmInstance) throw new Error('FHE encryption not ready. Please wait and try again.');
     }
+
+    const encryptedInput = await state.fhevmInstance
+      .createEncryptedInput(CONFIG.CONTRACT_ADDRESS, state.address)
+      .add64(amountU64)
+      .encrypt();
+
+    const encInput = encryptedInput.handles[0];
+    const inputProof = encryptedInput.inputProof;
 
     const tx = await state.contract.borrow(encInput, inputProof);
     updateLastTx('pending', 'Confirming...');
@@ -1925,17 +1956,18 @@ async function handleRepay() {
     const amountWei = ethers.parseEther(amount.toString());
     const amountU64 = BigInt(amountWei.toString());
 
-    let encInput, inputProof;
-    if (state.fhevmInstance) {
-      const encrypted = await state.fhevmInstance
-        .createEncryptedInput(CONFIG.CONTRACT_ADDRESS, state.address)
-        .add64(amountU64)
-        .encrypt();
-      encInput = encrypted.handles[0];
-      inputProof = encrypted.inputProof;
-    } else {
-      throw new Error('FHEVM instance not initialized');
+    if (!state.fhevmInstance) {
+      await initFhevmInstance();
+      if (!state.fhevmInstance) throw new Error('FHE encryption not ready. Please wait and try again.');
     }
+
+    const encryptedInput = await state.fhevmInstance
+      .createEncryptedInput(CONFIG.CONTRACT_ADDRESS, state.address)
+      .add64(amountU64)
+      .encrypt();
+
+    const encInput = encryptedInput.handles[0];
+    const inputProof = encryptedInput.inputProof;
 
     const tx = await state.contract.repay(encInput, inputProof, { value: amountWei });
     updateLastTx('pending', 'Confirming...');
@@ -2124,16 +2156,12 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 <!-- ethers.js v6 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
-<!--
-  TODO before deploying:
-  1. Deploy VeilLending.sol to Sepolia
-  2. Update CONFIG.CONTRACT_ADDRESS with deployed address
-  3. Initialize FHEVM Relayer SDK:
-     import { createInstance } from '@zama-fhe/relayer-sdk';
-     state.fhevmInstance = await createInstance({ network: window.ethereum });
-  4. Replace mock encrypt calls with real SDK encrypt calls
--->
+<!-- Zama FHEVM Relayer SDK -->
+<script type="module">
+  import { createInstance, SepoliaConfig } from 'https://esm.sh/@zama-fhe/relayer-sdk@latest';
+  window.__zamaSdk = { createInstance, SepoliaConfig };
+  window.dispatchEvent(new Event('zama-sdk-ready'));
+</script>
 
 </body>
 </html>
-
