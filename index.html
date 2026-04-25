@@ -1574,7 +1574,7 @@ const CONFIG = {
   RPC_URL: 'https://rpc.sepolia.org',
   EXPLORER: 'https://sepolia.etherscan.io',
   WC_PROJECT_ID: 'd6c397fa7c24d7f34c3b21495e27436e',
-  FHE_WORKER: 'https://veil-fhe-worker.samsonsamuel531.workers.dev',
+  FHE_WORKER: 'https://veil-backend-2gki.onrender.com/encrypt',
   ETH_PRICE: 300000, // $3000 in cents
 };
 
@@ -1626,23 +1626,32 @@ let state = {
 // FHE ENCRYPTION VIA CLOUDFLARE WORKER
 // ─────────────────────────────────────────────────────────────
 async function fheEncrypt(amountWei) {
-  const response = await fetch(CONFIG.FHE_WORKER, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      amount: amountWei.toString(),
-      contractAddress: CONFIG.CONTRACT_ADDRESS,
-      userAddress: state.address,
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'FHE encryption failed');
+  // Call Render backend which runs @zama-fhe/relayer-sdk server-side
+  let response;
+  try {
+    response = await fetch(CONFIG.FHE_WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: amountWei.toString(),
+        contractAddress: CONFIG.CONTRACT_ADDRESS,
+        userAddress: state.address,
+      })
+    });
+  } catch (e) {
+    throw new Error('Cannot reach encryption backend. Check your connection.');
   }
 
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error || 'Encryption failed');
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    throw new Error('Invalid response from encryption backend.');
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'FHE encryption failed');
+  }
 
   return { handle: data.handle, inputProof: data.inputProof };
 }
@@ -2256,7 +2265,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 <!-- ethers.js v6 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
-<!-- FHE encryption handled by Cloudflare Worker: veil-fhe-worker.samsonsamuel531.workers.dev -->
+<!-- FHE encryption handled by Render backend: veil-backend-2gki.onrender.com -->
 
 </body>
 </html>
