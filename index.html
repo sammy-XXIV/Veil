@@ -1337,23 +1337,35 @@
             </div>
 
             <div id="has-position-state" style="display:none">
-              <div class="position-grid">
+
+              <!-- Position metrics grid -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
                 <div class="position-item">
                   <div class="position-item-label">Collateral</div>
                   <div class="position-item-value" id="pos-collateral">— ETH</div>
+                  <div style="font-size:10px;color:var(--text3);font-family:'Geist Mono',monospace;margin-top:2px" id="pos-collateral-usd"></div>
                 </div>
                 <div class="position-item">
-                  <div class="position-item-label">Debt</div>
+                  <div class="position-item-label">Borrowed</div>
                   <div class="position-item-value" id="pos-debt">— ETH</div>
+                  <div style="font-size:10px;color:var(--text3);font-family:'Geist Mono',monospace;margin-top:2px" id="pos-debt-usd"></div>
+                </div>
+                <div class="position-item">
+                  <div class="position-item-label">Max Borrow</div>
+                  <div class="position-item-value" id="pos-max-borrow" style="color:var(--green)">— ETH</div>
+                </div>
+                <div class="position-item">
+                  <div class="position-item-label">Liq. Price</div>
+                  <div class="position-item-value" id="pos-liq-price" style="color:var(--red)">$—</div>
                 </div>
               </div>
 
-              <div class="hf-meter">
+              <!-- Health Factor -->
+              <div class="hf-meter" style="margin-bottom:14px">
                 <div class="hf-label">
                   <span class="hf-title">Health Factor</span>
-                  <span class="hf-value encrypted-label">
-                    
-                    <span>Encrypted onchain</span>
+                  <span class="hf-value encrypted-label" style="font-size:11px;color:var(--accent2)">
+                    Encrypted onchain
                   </span>
                 </div>
                 <div class="hf-bar">
@@ -1361,13 +1373,34 @@
                 </div>
                 <div class="hf-markers">
                   <span class="hf-marker">0</span>
-                  <span class="hf-marker" style="color:var(--red)">150% </span>
-                  <span class="hf-marker">∞</span>
+                  <span class="hf-marker" style="color:var(--red)">150% liq.</span>
+                  <span class="hf-marker">Safe</span>
                 </div>
               </div>
 
-              <div class="alert alert-success" style="margin-bottom:0">
-                <span></span>
+              <!-- vETH & Interest row -->
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+                <div>
+                  <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'Geist Mono',monospace">vETH Balance</div>
+                  <div style="font-size:14px;font-weight:600;color:var(--accent2);margin-top:2px" id="pos-veth">— vETH</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'Geist Mono',monospace">Accrued Interest</div>
+                  <div style="font-size:14px;font-weight:600;color:var(--yellow);margin-top:2px" id="pos-interest">0 ETH</div>
+                </div>
+              </div>
+
+              <!-- Add vETH to MetaMask -->
+              <button class="btn btn-ghost btn-full" onclick="addVethToMetaMask()" style="margin-bottom:12px;font-size:13px">
+                + Add vETH to MetaMask
+              </button>
+
+              <!-- Close Position -->
+              <button class="btn btn-danger btn-full" onclick="handleClosePosition()" id="close-btn">
+                Close Position & Withdraw Collateral
+              </button>
+
+              <div class="alert alert-success" style="margin-top:12px;margin-bottom:0;font-size:12px">
                 <span>Your position is protected. Bots see only encrypted ciphertext — they cannot determine your health factor.</span>
               </div>
             </div>
@@ -1398,6 +1431,7 @@
                 <div class="form-label">
                   Collateral Amount
                   <span class="form-label-hint" id="wallet-balance" style="display:none">Balance: 0.0000 ETH ($0.00)</span>
+                  <span class="form-label-hint" id="veth-balance" style="display:none;margin-left:8px;color:var(--accent2)"></span>
                 </div>
                 <div class="input-wrap">
                   <input class="input input-with-suffix" type="number" id="deposit-amount" placeholder="0.0" step="0.01" min="0.01">
@@ -1415,19 +1449,43 @@
 
             <!-- BORROW TAB -->
             <div id="tab-borrow" class="tab-content" style="display:none">
+
+              <!-- Borrow stats -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">
+                  <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'Geist Mono',monospace">Available</div>
+                  <div style="font-size:15px;font-weight:600;color:var(--green);margin-top:4px" id="borrow-available">— ETH</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">
+                  <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'Geist Mono',monospace">Pool Liquidity</div>
+                  <div style="font-size:15px;font-weight:600;color:var(--text);margin-top:4px" id="borrow-pool">— ETH</div>
+                </div>
+              </div>
+
               <div class="form-group">
                 <div class="form-label">
                   Borrow Amount
-                  <span class="form-label-hint">Max: depends on collateral</span>
+                  <span class="form-label-hint" id="borrow-max-hint">Max: — ETH</span>
                 </div>
                 <div class="input-wrap">
-                  <input class="input input-with-suffix" type="number" id="borrow-amount" placeholder="0.0" step="0.01" min="0.001">
+                  <input class="input input-with-suffix" type="number" id="borrow-amount" placeholder="0.0" step="0.01" min="0.001" oninput="updateBorrowPreview()">
                   <span class="input-suffix">ETH</span>
                 </div>
               </div>
-              <div class="alert alert-warning" style="font-size:12px;margin-bottom:16px">
-                <span></span>
-                <span>Maintain a health factor above 150% to avoid liquidation. Your ratio stays encrypted.</span>
+
+              <!-- Borrow limit bar -->
+              <div style="margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:11px;color:var(--text3);font-family:'Geist Mono',monospace">Borrow Limit Used</span>
+                  <span style="font-size:11px;color:var(--text2);font-family:'Geist Mono',monospace" id="borrow-limit-pct">0%</span>
+                </div>
+                <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+                  <div id="borrow-limit-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--yellow));border-radius:2px;transition:width 0.3s"></div>
+                </div>
+              </div>
+
+              <div class="alert alert-warning" style="font-size:12px;margin-bottom:14px">
+                <span>Keep borrow below 66% of collateral value to maintain healthy position. Interest rate: 5% APR.</span>
               </div>
               <button class="btn btn-primary btn-lg btn-full" id="borrow-btn" onclick="handleBorrow()">
                 Borrow
@@ -1436,12 +1494,22 @@
 
             <!-- REPAY TAB -->
             <div id="tab-repay" class="tab-content" style="display:none">
+              <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px">
+                <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'Geist Mono',monospace;margin-bottom:4px">Current Debt + Interest</div>
+                <div style="font-size:16px;font-weight:600;color:var(--red)" id="repay-current-debt">— ETH</div>
+              </div>
               <div class="form-group">
-                <div class="form-label">Repay Amount</div>
+                <div class="form-label">
+                  Repay Amount
+                  <span class="form-label-hint" id="repay-balance-hint"></span>
+                </div>
                 <div class="input-wrap">
                   <input class="input input-with-suffix" type="number" id="repay-amount" placeholder="0.0" step="0.01" min="0.001">
                   <span class="input-suffix">ETH</span>
                 </div>
+              </div>
+              <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
+                <span>Repaying debt improves your health factor and reduces liquidation risk.</span>
               </div>
               <button class="btn btn-success btn-lg btn-full" id="repay-btn" onclick="handleRepay()">
                 Repay Debt
@@ -1568,7 +1636,7 @@
 // CONFIG — update CONTRACT_ADDRESS after deploying
 // 
 const CONFIG = {
-  CONTRACT_ADDRESS: '0x518a612f93d3d83495879be50c6292d26c0aec2c',
+  CONTRACT_ADDRESS: '0xF2238eC479e64e8878e338b0bfD5B90E5AFd2502',
   CHAIN_ID: '0xaa36a7', // Sepolia
   CHAIN_NAME: 'Sepolia Testnet',
   RPC_URL: 'https://rpc.sepolia.org',
@@ -1576,6 +1644,7 @@ const CONFIG = {
   WC_PROJECT_ID: 'd6c397fa7c24d7f34c3b21495e27436e',
   FHE_WORKER: 'https://veil-backend-2gki.onrender.com/encrypt',
   FHE_HEALTH: 'https://veil-backend-2gki.onrender.com/health',
+  VETH_ADDRESS: '0xf8e81D47203A594245E36C48e151709F0C19fBe8',
   ETH_PRICE: 300000, // $3000 in cents
 };
 
@@ -1586,23 +1655,30 @@ const ABI = [
   "function borrow(bytes32 inputBorrowAmount, bytes calldata inputProof, uint256 borrowAmount) external",
   "function repay(bytes32 inputRepayAmount, bytes calldata inputProof) external payable",
   "function liquidate(address target) external",
-  "function closePosition(uint256 collateralAmount) external",
+  "function closePosition() external",
   "function addLiquidity() external payable",
   "function withdrawLiquidity(uint256 amount) external",
   "function getPoolBalance() external view returns (uint256)",
   "function getCollateral(address user) external view returns (bytes32)",
   "function getDebt(address user) external view returns (bytes32)",
-  "function getPositionMeta(address user) external view returns (bool exists, uint256 openedAt)",
+  "function getPositionMeta(address user) external view returns (bool, uint256, uint256, uint256)",
   "function getStats() external view returns (uint256, uint256, uint64)",
   "function positionOf(address user) external view returns (bool)",
   "function hasPosition(address) external view returns (bool)",
   "function ethPrice() external view returns (uint64)",
   "function totalPositions() external view returns (uint256)",
   "function poolBalance() external view returns (uint256)",
-  "event PositionOpened(address indexed user, uint256 timestamp)",
+  "function calculateInterest(address user) external view returns (uint256)",
+  "event PositionOpened(address indexed user, uint256 collateral, uint256 timestamp)",
   "event BorrowExecuted(address indexed user, uint256 amount, uint256 timestamp)",
-  "event LiquidationAttempted(address indexed liquidator, address indexed target, bool success, uint256 timestamp)",
+  "event LiquidationExecuted(address indexed liquidator, address indexed target, uint256 bonus, uint256 timestamp)",
   "event LiquidityAdded(uint256 amount, uint256 newBalance, uint256 timestamp)",
+];
+
+const VETH_ABI = [
+  "function balanceOf(address account) external view returns (uint256)",
+  "function symbol() external view returns (string)",
+  "function decimals() external view returns (uint8)",
 ];
 
 // 
@@ -1704,6 +1780,26 @@ async function loadWalletBalance() {
     console.error('loadWalletBalance:', e);
   }
 }
+async function loadVethBalance() {
+  try {
+    if (!state.provider || !state.address) return;
+    const vEthContract = new ethers.Contract(CONFIG.VETH_ADDRESS, VETH_ABI, state.provider);
+    const balance = await vEthContract.balanceOf(state.address);
+    const balEth = parseFloat(ethers.formatEther(balance)).toFixed(4);
+    // Update nav badge
+    const el = document.getElementById('veth-balance');
+    if (el) {
+      el.textContent = `vETH: ${balEth}`;
+      el.style.display = 'inline';
+    }
+    // Update position panel
+    const posVeth = document.getElementById('pos-veth');
+    if (posVeth) posVeth.textContent = `${balEth} vETH`;
+  } catch (e) {
+    console.error('loadVethBalance:', e);
+  }
+}
+
 
 // Generic injected wallet connector (MetaMask, Rabby, Phantom, Coinbase)
 async function connectInjected(walletType) {
@@ -1849,6 +1945,7 @@ function onConnected() {
   loadPosition();
   loadStats();
   loadWalletBalance();
+  loadVethBalance();
 
   // Initialize FHEVM Relayer SDK
   initFhevmInstance();
@@ -2106,6 +2203,69 @@ async function handleRepay() {
     showToast('', err.message?.slice(0, 80) || 'Transaction failed');
   } finally {
     setLoading(btn, false, 'Repay Debt');
+  }
+}
+
+async function handleClosePosition() {
+  if (!state.hasPosition) return showToast('', 'No open position');
+  const btn = document.getElementById('close-btn');
+  setLoading(btn, true, 'Closing Position...');
+  addTx('pending', 'Close Position', 'Withdrawing collateral');
+
+  try {
+    if (!state.contract) throw new Error('Contract not configured');
+    const tx = await state.contract.closePosition();
+    updateLastTx('pending', 'Confirming...');
+    await tx.wait();
+    updateLastTx('success', 'Position closed');
+    showToast('', 'Position closed. Collateral returned to wallet.');
+    state.hasPosition = false;
+    loadPosition();
+    loadStats();
+    loadWalletBalance();
+  } catch (err) {
+    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
+    showToast('', err.message?.slice(0, 80) || 'Transaction failed');
+  } finally {
+    setLoading(btn, false, 'Close Position & Withdraw Collateral');
+  }
+}
+
+async function addVethToMetaMask() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'ERC20',
+        options: {
+          address: CONFIG.VETH_ADDRESS,
+          symbol: 'vETH',
+          decimals: 18,
+          image: '',
+        },
+      },
+    });
+    showToast('', 'vETH added to MetaMask');
+  } catch (err) {
+    showToast('', 'Failed to add vETH: ' + err.message);
+  }
+}
+
+function updateBorrowPreview() {
+  const amount = parseFloat(document.getElementById('borrow-amount').value) || 0;
+  const collEth = parseFloat(document.getElementById('pos-collateral').textContent) || 0;
+  const maxBorrow = collEth * 0.66;
+  const pct = maxBorrow > 0 ? Math.min((amount / maxBorrow) * 100, 100) : 0;
+
+  document.getElementById('borrow-limit-bar').style.width = pct + '%';
+  document.getElementById('borrow-limit-pct').textContent = pct.toFixed(0) + '%';
+
+  if (pct > 90) {
+    document.getElementById('borrow-limit-bar').style.background = 'var(--red)';
+  } else if (pct > 66) {
+    document.getElementById('borrow-limit-bar').style.background = 'linear-gradient(90deg,var(--yellow),var(--red))';
+  } else {
+    document.getElementById('borrow-limit-bar').style.background = 'linear-gradient(90deg,var(--green),var(--yellow))';
   }
 }
 
