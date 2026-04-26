@@ -1593,7 +1593,7 @@ const ABI = [
   "function getCollateral(address user) external view returns (bytes32)",
   "function getDebt(address user) external view returns (bytes32)",
   "function getPositionMeta(address user) external view returns (bool exists, uint256 openedAt)",
-  "function getStats() external view returns (uint256 totalPositions, uint256 poolBalance, uint64 ethPrice)",
+  "function getStats() external view returns (uint256, uint256, uint64)",
   "function positionOf(address user) external view returns (bool)",
   "function hasPosition(address) external view returns (bool)",
   "function ethPrice() external view returns (uint64)",
@@ -1627,7 +1627,6 @@ let state = {
 // FHE ENCRYPTION VIA CLOUDFLARE WORKER
 // ─────────────────────────────────────────────────────────────
 async function fheEncrypt(amountWei) {
-  // Call Render backend which runs @zama-fhe/relayer-sdk server-side
   let response;
   try {
     response = await fetch(CONFIG.FHE_WORKER, {
@@ -1654,7 +1653,22 @@ async function fheEncrypt(amountWei) {
     throw new Error(data.error || 'FHE encryption failed');
   }
 
-  return { handle: data.handle, inputProof: data.inputProof };
+  // Convert handle to proper hex string if it came back as object/array
+  let handle = data.handle;
+  let inputProof = data.inputProof;
+
+  if (typeof handle !== 'string') {
+    // Convert Uint8Array or object to hex string
+    const bytes = Object.values(handle);
+    handle = '0x' + bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  if (typeof inputProof !== 'string') {
+    const bytes = Object.values(inputProof);
+    inputProof = '0x' + bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  return { handle, inputProof };
 }
 
 async function loadWalletBalance() {
@@ -2006,7 +2020,7 @@ async function handleDeposit() {
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    // Encrypt amount via Cloudflare Worker (Zama Relayer SDK)
+    // Encrypt amount via Render backend (Zama Relayer SDK)
     showToast('', 'Encrypting amount with FHE...');
     const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
 
@@ -2042,11 +2056,11 @@ async function handleBorrow() {
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    // Encrypt amount via Cloudflare Worker
+    // Encrypt amount via Render backend
     showToast('', 'Encrypting amount with FHE...');
     const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
 
-    const tx = await state.contract.borrow(encInput, inputProof);
+    const tx = await state.contract.borrow(encInput, inputProof, amountWei.toString());
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
 
@@ -2075,7 +2089,7 @@ async function handleRepay() {
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    // Encrypt amount via Cloudflare Worker
+    // Encrypt amount via Render backend
     showToast('', 'Encrypting amount with FHE...');
     const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
 
