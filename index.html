@@ -8,16 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #06060a;
-    --bg2: #0a0a10;
-    --bg3: #0e0e16;
-    --surface: #111118;
-    --surface2: #16161f;
+    --bg: #050506;
+    --bg2: #08080a;
+    --bg3: #0c0c0e;
+    --surface: #101010;
+    --surface2: #161616;
     --border: rgba(255,255,255,0.06);
     --border-bright: rgba(255,255,255,0.1);
-    --accent: #6366f1;
-    --accent2: #818cf8;
-    --accent3: #a5b4fc;
+    --accent: #f5c542;
+    --accent2: #ffd700;
+    --accent3: #ffe566;
     --green: #10b981;
     --red: #ef4444;
     --yellow: #f59e0b;
@@ -51,7 +51,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
-    z-index: 100;
+    z-index: 9000;
   }
 
   .nav-logo {
@@ -114,7 +114,7 @@
   .btn-connect {
     padding: 8px 16px;
     background: var(--accent);
-    color: white;
+    color: #050506;
     border: none;
     border-radius: 8px;
     font-size: 13px;
@@ -157,6 +157,7 @@
   .page-wrapper {
     padding-top: var(--nav-h);
     min-height: 100vh;
+    position: relative;
   }
 
   /* ── LANDING ── */
@@ -177,8 +178,8 @@
     font-family: 'Geist Mono', monospace;
     font-size: 11px;
     color: var(--accent2);
-    background: rgba(99,102,241,0.08);
-    border: 1px solid rgba(99,102,241,0.2);
+    background: rgba(245,197,66,0.08);
+    border: 1px solid rgba(245,197,66,0.2);
     padding: 5px 12px;
     border-radius: 20px;
     margin-bottom: 28px;
@@ -235,7 +236,7 @@
   .btn-primary {
     padding: 12px 28px;
     background: var(--accent);
-    color: white;
+    color: #050506;
     border: none;
     border-radius: 10px;
     font-size: 15px;
@@ -243,7 +244,7 @@
     font-family: 'Geist', sans-serif;
     cursor: pointer;
     transition: all 0.15s;
-    box-shadow: 0 0 24px rgba(99,102,241,0.3);
+    box-shadow: 0 0 24px rgba(245,197,66,0.3);
   }
   .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
 
@@ -448,7 +449,7 @@
     width: 100%;
   }
 
-  .btn-blue { background: var(--accent); color: white; box-shadow: 0 0 20px rgba(99,102,241,0.25); }
+  .btn-blue { background: var(--accent); color: white; box-shadow: 0 0 20px rgba(245,197,66,0.25); }
   .btn-blue:hover { opacity: 0.85; }
   .btn-blue:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -470,7 +471,7 @@
     font-weight: 500;
   }
 
-  .badge-purple { color: var(--accent2); background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); }
+  .badge-purple { color: var(--accent2); background: rgba(245,197,66,0.1); border: 1px solid rgba(245,197,66,0.2); }
   .badge-green { color: var(--green); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
   .badge-red { color: var(--red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
   .badge-yellow { color: var(--yellow); background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
@@ -483,7 +484,7 @@
     line-height: 1.5;
     margin-bottom: 14px;
   }
-  .alert-info { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); color: var(--accent3); }
+  .alert-info { background: rgba(245,197,66,0.06); border: 1px solid rgba(245,197,66,0.15); color: var(--accent3); }
   .alert-warning { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); color: var(--yellow); }
   .alert-success { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); color: var(--green); }
   .alert-danger { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); color: var(--red); }
@@ -687,6 +688,7 @@
     font-weight: 700;
     color: white;
     flex-shrink: 0;
+    object-fit: contain;
   }
 
   .wallet-opt-info { flex: 1; text-align: left; }
@@ -697,8 +699,8 @@
     font-size: 10px;
     font-family: 'Geist Mono', monospace;
     color: var(--accent2);
-    background: rgba(99,102,241,0.1);
-    border: 1px solid rgba(99,102,241,0.2);
+    background: rgba(245,197,66,0.1);
+    border: 1px solid rgba(245,197,66,0.2);
     padding: 2px 7px;
     border-radius: 4px;
   }
@@ -759,7 +761,7 @@
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     padding: 12px;
-    z-index: 99;
+    z-index: 8999;
     flex-direction: column;
     gap: 4px;
   }
@@ -784,6 +786,8 @@
   .mobile-nav-link.active { color: var(--text); background: var(--surface2); }
 
   /* ── RESPONSIVE ── */
+  .split-grid { grid-template-columns: 1fr !important; }
+  
   @media (max-width: 768px) {
     .nav-links { display: none; }
     .nav-mobile-menu { display: flex; }
@@ -799,9 +803,8 @@
   }
 
   /* ── CONNECT SCREEN ── */
-  #page-connect { display: block; }
-  .app-page { display: none; }
-  .app-page.active { display: block; }
+  .app-page { display: none !important; }
+  .app-page.active { display: block !important; }
 </style>
 </head>
 <body>
@@ -818,7 +821,7 @@
     <div style="margin-bottom:8px">
       <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Browser Extension</div>
       <button class="wallet-opt" onclick="connectInjected('metamask')" id="mm-btn">
-        <div class="wallet-opt-icon" style="background:#f6851b">MM</div>
+        <div class="wallet-opt-icon" style="background:#f6851b;font-size:18px">🦊</div>
         <div class="wallet-opt-info">
           <div class="wallet-opt-name">MetaMask</div>
           <div class="wallet-opt-desc">Most popular browser wallet</div>
@@ -826,7 +829,7 @@
         <span class="wallet-opt-tag">Popular</span>
       </button>
       <button class="wallet-opt" onclick="connectInjected('rabby')" id="rabby-btn">
-        <div class="wallet-opt-icon" style="background:#6366f1">RB</div>
+        <div class="wallet-opt-icon" style="background:#7c3aed;font-size:18px">🐰</div>
         <div class="wallet-opt-info">
           <div class="wallet-opt-name">Rabby</div>
           <div class="wallet-opt-desc">Security-first EVM wallet</div>
@@ -834,7 +837,7 @@
         <span class="wallet-opt-tag">EVM</span>
       </button>
       <button class="wallet-opt" onclick="connectInjected('coinbase')" id="coinbase-btn">
-        <div class="wallet-opt-icon" style="background:#0052ff">CB</div>
+        <div class="wallet-opt-icon" style="background:#0052ff;font-size:18px">🔵</div>
         <div class="wallet-opt-info">
           <div class="wallet-opt-name">Coinbase Wallet</div>
           <div class="wallet-opt-desc">By Coinbase</div>
@@ -845,7 +848,7 @@
     <div class="divider"></div>
     <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Mobile / Any Wallet</div>
     <button class="wallet-opt wallet-opt-wc" onclick="connectWithWalletConnect()" id="wc-btn">
-      <div class="wallet-opt-icon" style="background:#3b99fc">WC</div>
+      <div class="wallet-opt-icon" style="background:#3b99fc;font-size:18px">🔗</div>
       <div class="wallet-opt-info">
         <div class="wallet-opt-name">WalletConnect</div>
         <div class="wallet-opt-desc">Trust · Rainbow · 300+ wallets</div>
@@ -1023,7 +1026,7 @@
       <div class="page-sub">Lock ETH as collateral and receive vETH receipt tokens</div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div>
         <div class="card">
           <div class="card-header">
@@ -1071,7 +1074,7 @@
       <div class="page-sub">Borrow ETH against your encrypted collateral</div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div>
         <div class="card">
           <div class="card-header">
@@ -1170,7 +1173,7 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div class="card">
         <div class="card-header"><div class="card-title">ETH Market</div></div>
         <div class="card-body">
@@ -1615,6 +1618,7 @@ function onConnected() {
   loadStats();
   loadWalletBalance();
   loadVethBalance();
+  loadTxHistory();
 
   // Initialize FHEVM Relayer SDK
   initFhevmInstance();
@@ -2029,6 +2033,54 @@ function copyContract() {
 // 
 // TX FEED
 // 
+// ─────────────────────────────────────────────────────────────
+// TX HISTORY — persists via localStorage
+// ─────────────────────────────────────────────────────────────
+const TX_STORAGE_KEY = 'veil_tx_history';
+const MAX_TX = 20;
+
+function saveTxHistory(txData) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(TX_STORAGE_KEY) || '[]');
+    stored.unshift(txData);
+    if (stored.length > MAX_TX) stored.pop();
+    localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(stored));
+  } catch(e) {}
+}
+
+function loadTxHistory() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(TX_STORAGE_KEY) || '[]');
+    if (stored.length === 0) return;
+    const feed = document.getElementById('tx-feed');
+    feed.innerHTML = '';
+    stored.forEach(tx => {
+      const el = document.createElement('div');
+      el.className = 'tx-item';
+      el.id = tx.id;
+      el.innerHTML = `
+        <div class="tx-dot tx-dot-${tx.status}"></div>
+        <div class="tx-content">
+          <div class="tx-title">${tx.title}</div>
+          <div class="tx-meta">${tx.meta} · ${tx.time}</div>
+        </div>
+        <span class="tx-status tx-status-${tx.status}">${tx.status}</span>
+      `;
+      feed.appendChild(el);
+    });
+    state.txCount = stored.length;
+    document.getElementById('tx-count').textContent = `${state.txCount} txs`;
+  } catch(e) {}
+}
+
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  return `${Math.floor(diff/86400000)}d ago`;
+}
+
 function addTx(status, title, meta) {
   const feed = document.getElementById('tx-feed');
   if (feed.querySelector('.empty-state')) feed.innerHTML = '';
@@ -2037,39 +2089,50 @@ function addTx(status, title, meta) {
   document.getElementById('tx-count').textContent = `${state.txCount} txs`;
 
   const id = `tx-${Date.now()}`;
-  const dotClass = `tx-dot-${status}`;
-  const statusClass = `tx-status-${status}`;
-  const statusLabel = status === 'pending' ? '...' : status;
+  const ts = Date.now();
 
   const el = document.createElement('div');
   el.className = 'tx-item';
   el.id = id;
   el.innerHTML = `
-    <div class="tx-dot ${dotClass}"></div>
+    <div class="tx-dot tx-dot-${status}"></div>
     <div class="tx-content">
       <div class="tx-title">${title}</div>
       <div class="tx-meta">${meta} · just now</div>
     </div>
-    <span class="tx-status ${statusClass}">${statusLabel}</span>
+    <span class="tx-status tx-status-${status}">${status === 'pending' ? '...' : status}</span>
   `;
   feed.prepend(el);
-  state.txHistory.push(id);
+  state.txHistory.push({ id, status, title, meta, time: 'just now', ts });
+
+  // Save to localStorage
+  saveTxHistory({ id, status, title, meta, time: 'just now', ts });
 }
 
 function updateLastTx(status, meta) {
-  const id = state.txHistory[state.txHistory.length - 1];
-  if (!id) return;
-  const el = document.getElementById(id);
+  const last = state.txHistory[state.txHistory.length - 1];
+  if (!last) return;
+  const el = document.getElementById(last.id);
   if (!el) return;
 
-  const dot = el.querySelector('.tx-dot');
+  el.querySelector('.tx-dot').className = `tx-dot tx-dot-${status}`;
   const statusEl = el.querySelector('.tx-status');
-  const metaEl = el.querySelector('.tx-meta');
-
-  dot.className = `tx-dot tx-dot-${status}`;
   statusEl.className = `tx-status tx-status-${status}`;
   statusEl.textContent = status;
-  metaEl.textContent = `${meta} · just now`;
+  el.querySelector('.tx-meta').textContent = `${meta} · just now`;
+
+  // Update in localStorage
+  last.status = status;
+  last.meta = meta;
+  try {
+    const stored = JSON.parse(localStorage.getItem(TX_STORAGE_KEY) || '[]');
+    const idx = stored.findIndex(t => t.id === last.id);
+    if (idx !== -1) {
+      stored[idx].status = status;
+      stored[idx].meta = meta;
+      localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(stored));
+    }
+  } catch(e) {}
 }
 
 // 
