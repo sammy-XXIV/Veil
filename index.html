@@ -788,7 +788,21 @@
   /* ── RESPONSIVE ── */
   .split-grid { grid-template-columns: 1fr !important; }
   
+  /* Desktop */
+  @media (min-width: 769px) {
+    .split-grid { grid-template-columns: 1fr 1fr !important; }
+    .metrics-grid { grid-template-columns: repeat(4, 1fr); }
+    .pos-grid { grid-template-columns: 1fr 1fr; }
+    .app-page { padding: 40px 40px 80px; }
+    .nav-mobile-menu { display: none; }
+    .nav-links { display: flex; }
+    .nav-price { display: flex; }
+    .landing-title { font-size: 80px; }
+  }
+
+  /* Tablet */
   @media (max-width: 768px) {
+    .split-grid { grid-template-columns: 1fr !important; }
     .nav-links { display: none; }
     .nav-mobile-menu { display: flex; }
     .metrics-grid { grid-template-columns: 1fr 1fr; }
@@ -797,9 +811,12 @@
     .nav-price { display: none; }
   }
 
-  @media (max-width: 380px) {
+  /* Mobile */
+  @media (max-width: 480px) {
     .metrics-grid { grid-template-columns: 1fr 1fr; }
     .landing-title { font-size: 40px; }
+    .landing-stats { gap: 24px; }
+    .modal { padding: 20px 16px; }
   }
 
   /* ── CONNECT SCREEN ── */
@@ -2185,7 +2202,8 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 
 
 <!-- WalletConnect EthereumProvider v2 -->
-<script src="https://unpkg.com/@walletconnect/ethereum-provider@2.11.0/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.10.0/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.6.2/dist/index.umd.js"></script>
 
 <!-- ethers.js v6 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
