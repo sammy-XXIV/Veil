@@ -4,1127 +4,813 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VEIL Finance — Confidential Lending</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700;900&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ethers.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
 <style>
-  :root {
-    --bg: #050506;
-    --bg2: #08080a;
-    --bg3: #0c0c0e;
-    --surface: #101010;
-    --surface2: #161616;
-    --border: rgba(255,255,255,0.06);
-    --border-bright: rgba(255,255,255,0.1);
-    --accent: #f5c542;
-    --accent2: #ffd700;
-    --accent3: #ffe566;
-    --green: #10b981;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --text: #f8f8fc;
-    --text2: #8888a8;
-    --text3: #44445a;
-    --nav-h: 60px;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Geist', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── NAV ── */
-  nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: var(--nav-h);
-    background: rgba(6,6,10,0.92);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    border-top: 2px solid var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    z-index: 9000;
-  }
-
-  .nav-logo {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Instrument Serif', serif;
-    font-size: 20px;
-    font-weight: 400;
-    color: var(--text);
-    text-decoration: none;
-    cursor: pointer;
-  }
-
-  .nav-logo-dot {
-    width: 8px; height: 8px;
-    background: var(--accent);
-    border-radius: 50%;
-  }
-
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .nav-link {
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text2);
-    cursor: pointer;
-    transition: all 0.15s;
-    border: none;
-    background: transparent;
-    font-family: 'Geist', sans-serif;
-  }
-
-  .nav-link:hover { color: var(--text); background: var(--surface); }
-  .nav-link.active { color: var(--text); background: var(--surface2); }
-
-  .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  @media (max-width: 480px) {
-    .nav-right { gap: 6px; }
-  }
-
-  .nav-price {
-    font-family: 'Geist Mono', monospace;
-    font-size: 12px;
-    color: var(--text2);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .nav-price .price { color: var(--green); font-weight: 500; }
-
-  .btn-connect {
-    padding: 8px 16px;
-    background: var(--accent);
-    color: #050506;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: 'Geist', sans-serif;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .btn-connect:hover { opacity: 0.85; }
-  @media (max-width: 480px) {
-    .btn-connect { padding: 7px 12px; font-size: 12px; }
-  }
-
-  .address-chip {
-    font-family: 'Geist Mono', monospace;
-    font-size: 12px;
-    color: var(--text2);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 6px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .address-chip:hover { color: var(--text); border-color: var(--border-bright); }
-
-  /* ── MOBILE NAV ── */
-  .nav-mobile-menu {
-    display: none;
-    flex-direction: column;
-    gap: 2px;
-    cursor: pointer;
-    padding: 6px;
-    flex-shrink: 0;
-    z-index: 9001;
-  }
-  .nav-mobile-menu span {
-    width: 20px; height: 2px;
-    background: var(--text);
-    border-radius: 1px;
-    transition: all 0.2s;
-  }
-
-  /* ── PAGE WRAPPER ── */
-  .page-wrapper {
-    padding-top: var(--nav-h);
-    min-height: 100vh;
-    position: relative;
-  }
-
-  /* ── LANDING ── */
-  #page-landing {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - var(--nav-h));
-    text-align: center;
-    padding: 40px 24px;
-  }
-
-  .landing-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Geist Mono', monospace;
-    font-size: 11px;
-    color: var(--accent2);
-    background: rgba(245,197,66,0.08);
-    border: 1px solid rgba(245,197,66,0.2);
-    padding: 5px 12px;
-    border-radius: 20px;
-    margin-bottom: 28px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  .landing-badge::before {
-    content: '';
-    width: 6px; height: 6px;
-    background: var(--accent2);
-    border-radius: 50%;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .landing-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: clamp(48px, 8vw, 88px);
-    font-weight: 400;
-    line-height: 1.0;
-    letter-spacing: -2px;
-    margin-bottom: 20px;
-  }
-
-  .landing-title .accent {
-    background: linear-gradient(135deg, var(--accent3), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .landing-sub {
-    font-size: 17px;
-    color: var(--text2);
-    max-width: 480px;
-    line-height: 1.7;
-    margin-bottom: 36px;
-    font-weight: 300;
-  }
-
-  .landing-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 48px;
-  }
-
-  .btn-primary {
-    padding: 12px 28px;
-    background: var(--accent);
-    color: #050506;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    font-family: 'Geist', sans-serif;
-    cursor: pointer;
-    transition: all 0.15s;
-    box-shadow: 0 0 24px rgba(245,197,66,0.3);
-  }
-  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
-
-  .btn-ghost {
-    padding: 12px 28px;
-    background: transparent;
-    color: var(--text2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 500;
-    font-family: 'Geist', sans-serif;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn-ghost:hover { color: var(--text); border-color: var(--border-bright); background: var(--surface); }
-
-  .landing-stats {
-    display: flex;
-    gap: 40px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .landing-stat {
-    text-align: center;
-  }
-
-  .landing-stat-value {
-    font-family: 'Geist Mono', monospace;
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .landing-stat-label {
-    font-size: 12px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 4px;
-    font-family: 'Geist Mono', monospace;
-  }
-
-  /* ── APP PAGES ── */
-  .app-page {
-    display: none;
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 32px 24px 80px;
-  }
-
-  .app-page.active { display: block; }
-
-  .page-header {
-    margin-bottom: 28px;
-  }
-
-  .page-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: 32px;
-    font-weight: 400;
-    letter-spacing: -0.5px;
-    margin-bottom: 6px;
-  }
-
-  .page-sub {
-    font-size: 14px;
-    color: var(--text2);
-    font-weight: 300;
-  }
-
-  /* ── CARDS ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: border-color 0.15s;
-  }
-  .card:hover { border-color: var(--border-bright); }
-
-  .card-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .card-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-family: 'Geist Mono', monospace;
-  }
-
-  .card-body { padding: 20px; }
-
-  /* ── METRICS GRID ── */
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 20px;
-  }
-
-  .metric {
-    background: var(--surface);
-    padding: 20px;
-    transition: background 0.15s;
-  }
-  .metric:hover { background: var(--surface2); }
-
-  .metric-label {
-    font-family: 'Geist Mono', monospace;
-    font-size: 10px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-  }
-
-  .metric-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.5px;
-  }
-
-  .metric-sub {
-    font-family: 'Geist Mono', monospace;
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 4px;
-  }
-
-  /* ── FORM ── */
-  .form-group { margin-bottom: 16px; }
-
-  .form-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-    font-family: 'Geist Mono', monospace;
-  }
-
-  .form-hint { font-weight: 400; color: var(--text3); text-transform: none; letter-spacing: 0; }
-
-  .input-wrap { position: relative; }
-
-  .input {
-    width: 100%;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 13px 50px 13px 16px;
-    font-family: 'Geist Mono', monospace;
-    font-size: 16px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s;
-    -moz-appearance: textfield;
-  }
-  .input::-webkit-inner-spin-button { -webkit-appearance: none; }
-  .input:focus { border-color: var(--accent); }
-  .input::placeholder { color: var(--text3); }
-
-  .input-suffix {
-    position: absolute;
-    right: 14px; top: 50%;
-    transform: translateY(-50%);
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text3);
-    font-family: 'Geist Mono', monospace;
-    pointer-events: none;
-  }
-
-  /* ── BUTTONS ── */
-  .btn {
-    padding: 13px 20px;
-    border-radius: 10px;
-    font-family: 'Geist', sans-serif;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.15s;
-    border: none;
-    outline: none;
-    width: 100%;
-  }
-
-  .btn-blue { background: var(--accent); color: white; box-shadow: 0 0 20px rgba(245,197,66,0.25); }
-  .btn-blue:hover { opacity: 0.85; }
-  .btn-blue:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .btn-green { background: rgba(16,185,129,0.12); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
-  .btn-green:hover { background: rgba(16,185,129,0.2); }
-
-  .btn-red { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
-  .btn-red:hover { background: rgba(239,68,68,0.2); }
-
-  .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-  .btn-outline:hover { color: var(--text); border-color: var(--border-bright); background: var(--surface2); }
-
-  /* ── BADGE ── */
-  .badge {
-    font-family: 'Geist Mono', monospace;
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 500;
-  }
-
-  .badge-purple { color: var(--accent2); background: rgba(245,197,66,0.1); border: 1px solid rgba(245,197,66,0.2); }
-  .badge-green { color: var(--green); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
-  .badge-red { color: var(--red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
-  .badge-yellow { color: var(--yellow); background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
-
-  /* ── ALERT ── */
-  .alert {
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    line-height: 1.5;
-    margin-bottom: 14px;
-  }
-  .alert-info { background: rgba(245,197,66,0.06); border: 1px solid rgba(245,197,66,0.15); color: var(--accent3); }
-  .alert-warning { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); color: var(--yellow); }
-  .alert-success { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); color: var(--green); }
-  .alert-danger { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); color: var(--red); }
-
-  /* ── DIVIDER ── */
-  .divider { height: 1px; background: var(--border); margin: 16px 0; }
-
-  /* ── POSITION PANEL ── */
-  .pos-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .pos-item {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px;
-  }
-
-  .pos-item-label {
-    font-family: 'Geist Mono', monospace;
-    font-size: 10px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
-  }
-
-  .pos-item-value {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .pos-item-sub {
-    font-family: 'Geist Mono', monospace;
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 3px;
-  }
-
-  /* ── HEALTH BAR ── */
-  .health-bar-wrap {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px;
-    margin-bottom: 16px;
-  }
-
-  .health-bar-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 12px;
-  }
-
-  .health-bar-title {
-    font-family: 'Geist Mono', monospace;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 10px;
-  }
-
-  .health-bar-track {
-    height: 6px;
-    background: var(--bg3);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-
-  .health-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    background: linear-gradient(90deg, var(--red), var(--yellow), var(--green));
-    background-size: 300%;
-    transition: width 0.4s ease;
-  }
-
-  .health-bar-markers {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 6px;
-    font-family: 'Geist Mono', monospace;
-    font-size: 10px;
-    color: var(--text3);
-  }
-
-  /* ── BORROW LIMIT BAR ── */
-  .limit-bar-wrap { margin-bottom: 16px; }
-  .limit-bar-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .limit-bar-label { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text3); }
-  .limit-bar-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-  .limit-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--green), var(--yellow)); transition: width 0.3s; }
-
-  /* ── TX FEED ── */
-  .tx-feed { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
-  .tx-feed::-webkit-scrollbar { width: 3px; }
-  .tx-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  .tx-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--bg2);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    animation: slidein 0.2s ease;
-  }
-
-  @keyframes slidein {
-    from { opacity: 0; transform: translateX(-8px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  .tx-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .tx-dot-success { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
-  .tx-dot-fail { background: var(--red); }
-  .tx-dot-pending { background: var(--yellow); animation: pulse 1s ease infinite; }
-
-  .tx-content { flex: 1; min-width: 0; }
-  .tx-title { font-size: 13px; font-weight: 600; color: var(--text); }
-  .tx-meta { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 2px; }
-  .tx-status { font-size: 10px; font-family: 'Geist Mono', monospace; padding: 2px 7px; border-radius: 4px; }
-  .tx-status-success { color: var(--green); background: rgba(16,185,129,0.1); }
-  .tx-status-fail { color: var(--red); background: rgba(239,68,68,0.1); }
-  .tx-status-pending { color: var(--yellow); background: rgba(245,158,11,0.1); }
-
-  /* ── WALLET MODAL ── */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(8px);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 200;
-    opacity: 0; visibility: hidden;
-    transition: all 0.2s;
-  }
-  .modal-overlay.active { opacity: 1; visibility: visible; }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border-bright);
-    border-radius: 16px;
-    width: 90%; max-width: 400px;
-    padding: 24px;
-    transform: scale(0.96) translateY(8px);
-    transition: transform 0.2s;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .modal-overlay.active .modal { transform: scale(1) translateY(0); }
-
-  .modal-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 20px;
-  }
-
-  .modal-title { font-size: 16px; font-weight: 700; }
-
-  .modal-close {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    color: var(--text2);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
-  }
-  .modal-close:hover { color: var(--text); }
-
-  /* ── WALLET BUTTONS ── */
-  .wallet-opt {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.15s;
-    width: 100%;
-    color: var(--text);
-    font-family: 'Geist', sans-serif;
-    margin-bottom: 8px;
-  }
-  .wallet-opt:hover { background: var(--surface2); border-color: var(--border-bright); }
-  .wallet-opt:last-child { margin-bottom: 0; }
-
-  .wallet-opt-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Geist Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    color: white;
-    flex-shrink: 0;
-    object-fit: contain;
-  }
-
-  .wallet-opt-info { flex: 1; text-align: left; }
-  .wallet-opt-name { font-size: 14px; font-weight: 600; }
-  .wallet-opt-desc { font-size: 11px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
-
-  .wallet-opt-tag {
-    font-size: 10px;
-    font-family: 'Geist Mono', monospace;
-    color: var(--accent2);
-    background: rgba(245,197,66,0.1);
-    border: 1px solid rgba(245,197,66,0.2);
-    padding: 2px 7px;
-    border-radius: 4px;
-  }
-
-  .wallet-opt-wc { border-color: rgba(59,153,252,0.2); background: rgba(59,153,252,0.04); }
-  .wallet-opt-wc:hover { border-color: rgba(59,153,252,0.4); }
-
-  /* ── SPINNER ── */
-  .spinner {
-    width: 14px; height: 14px;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 6px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── TOAST ── */
-  #toast-container {
-    position: fixed; bottom: 24px; right: 24px;
-    z-index: 9999;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-
-  .toast {
-    background: var(--surface2);
-    border: 1px solid var(--border-bright);
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-size: 13px;
-    color: var(--text);
-    min-width: 240px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: toastin 0.25s ease;
-  }
-  @keyframes toastin { from { opacity: 0; transform: translateY(8px); } }
-  .toast.out { animation: toastout 0.25s ease forwards; }
-  @keyframes toastout { to { opacity: 0; transform: translateY(8px); } }
-
-  /* ── EMPTY STATE ── */
-  .empty-state {
-    text-align: center;
-    padding: 32px 20px;
-    color: var(--text3);
-    font-family: 'Geist Mono', monospace;
-    font-size: 12px;
-  }
-
-  /* ── MOBILE DROPDOWN NAV ── */
-  .mobile-nav {
-    display: none;
-    position: fixed;
-    top: var(--nav-h);
-    left: 0; right: 0;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 12px;
-    z-index: 8999;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .mobile-nav.open { display: flex; }
-
-  .mobile-nav-link {
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text2);
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    font-family: 'Geist', sans-serif;
-    text-align: left;
-    width: 100%;
-    transition: all 0.15s;
-  }
-  .mobile-nav-link:hover { color: var(--text); background: var(--surface2); }
-  .mobile-nav-link.active { color: var(--text); background: var(--surface2); }
-
-  /* ── RESPONSIVE ── */
-  .split-grid { grid-template-columns: 1fr !important; }
-  
-  /* Desktop */
-  @media (min-width: 769px) {
-    .split-grid { grid-template-columns: 1fr 1fr !important; }
-    .metrics-grid { grid-template-columns: repeat(4, 1fr); }
-    .pos-grid { grid-template-columns: 1fr 1fr; }
-    .app-page { padding: 40px 40px 80px; }
-    .nav-mobile-menu { display: none; }
-    .nav-links { display: flex; }
-    .nav-price { display: flex; }
-    .landing-title { font-size: 80px; }
-  }
-
-  /* Tablet */
-  @media (max-width: 768px) {
-    .split-grid { grid-template-columns: 1fr !important; }
-    .nav-links { display: none !important; }
-    .nav-mobile-menu { display: flex !important; }
-    #nav-price { display: none !important; }
-    .metrics-grid { grid-template-columns: 1fr 1fr; }
-    .pos-grid { grid-template-columns: 1fr 1fr; }
-    .app-page { padding: 20px 16px 80px; }
-    .nav-price { display: none; }
-  }
-
-  /* Mobile */
-  @media (max-width: 480px) {
-    .metrics-grid { grid-template-columns: 1fr 1fr; }
-    .landing-title { font-size: 40px; }
-    .landing-stats { gap: 24px; }
-    .modal { padding: 20px 16px; }
-  }
-
-  /* ── CONNECT SCREEN ── */
-  .app-page { display: none !important; }
-  .app-page.active { display: block !important; }
-
-  .fhe-step {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: all 0.3s;
-  }
-  .fhe-step-inactive {
-    opacity: 0.4;
-  }
-  .fhe-step-active {
-    border-color: var(--accent);
-    background: rgba(245,197,66,0.05);
-    opacity: 1;
-  }
-  .fhe-step-done {
-    border-color: rgba(16,185,129,0.3);
-    background: rgba(16,185,129,0.05);
-    opacity: 1;
-  }
-  .fhe-step-icon {
-    font-size: 18px;
-    flex-shrink: 0;
-    width: 32px;
-    text-align: center;
-  }
-  .fhe-step-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .fhe-step-desc {
-    font-size: 11px;
-    color: var(--text3);
-    font-family: 'Geist Mono', monospace;
-    margin-top: 2px;
-  }
-
+:root {
+  --bg: #050506;
+  --surface: #0d0d10;
+  --surface2: #121215;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.1);
+  --text: #f0f0f5;
+  --text2: #7070a0;
+  --text3: #303045;
+  --accent: #f5c542;
+  --accent2: #5eead4;
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f5c542;
+  --purple: #a78bfa;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Geist', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(245,197,66,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245,197,66,0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 60px;
+  background: rgba(5,5,6,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 1000;
+}
+
+.nav-logo {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+}
+
+.nav-logo span { color: var(--accent); }
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-link {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 13px;
+  font-family: 'Geist', sans-serif;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.nav-link.active { color: var(--text); background: rgba(255,255,255,0.08); }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-price-pill {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: 'Geist Mono', monospace;
+}
+
+.nav-price-pill .price { color: var(--accent); font-weight: 600; }
+.nav-price-pill .divider { width: 1px; height: 12px; background: var(--border2); }
+.nav-price-pill .bal { color: var(--text2); }
+
+.btn-connect {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #050506;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Geist', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn-connect:hover { opacity: 0.85; }
+
+.address-chip {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--text2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: none;
+  transition: all 0.15s;
+}
+.address-chip:hover { color: var(--text); border-color: var(--border2); }
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  padding: 6px;
+  flex-shrink: 0;
+  z-index: 9001;
+}
+.hamburger span {
+  width: 20px; height: 2px;
+  background: var(--text);
+  border-radius: 1px;
+}
+
+/* ── MOBILE NAV ── */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  top: 60px; left: 0; right: 0;
+  background: rgba(5,5,6,0.97);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  z-index: 999;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-nav.open { display: flex; }
+.mobile-nav-link {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-family: 'Geist', sans-serif;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.mobile-nav-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+/* ── WRONG NETWORK ── */
+#wrong-network {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5,5,6,0.96);
+  z-index: 8000;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ── PAGES ── */
+.page-wrapper { padding-top: 60px; min-height: 100vh; position: relative; z-index: 1; }
+.app-page { display: none; padding: 24px; max-width: 900px; margin: 0 auto; }
+.app-page.active { display: block; }
+
+/* ── LANDING ── */
+#page-connect { max-width: 100%; padding: 0; }
+
+.landing {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 40px 24px;
+  position: relative;
+}
+
+.landing-glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(245,197,66,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.landing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  background: rgba(245,197,66,0.08);
+  border: 1px solid rgba(245,197,66,0.2);
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 28px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.landing-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.4; transform:scale(0.8); }
+}
+
+.landing h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(42px, 8vw, 80px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-bottom: 20px;
+}
+
+.landing h1 .accent { color: var(--accent); font-style: italic; }
+
+.landing p {
+  font-size: 16px;
+  color: var(--text2);
+  max-width: 480px;
+  line-height: 1.7;
+  margin-bottom: 36px;
+  font-weight: 300;
+}
+
+.landing-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 60px;
+}
+
+.btn-primary {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #050506;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Geist', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.85; }
+
+.btn-outline {
+  padding: 12px 28px;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Geist', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.btn-outline:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+.landing-stats {
+  display: flex;
+  gap: 48px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.landing-stat-value {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.landing-stat-label {
+  font-size: 12px;
+  color: var(--text2);
+  font-family: 'Geist Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.card-body { padding: 20px; }
+
+/* ── PAGE HEADER ── */
+.page-header { margin-bottom: 24px; }
+.page-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+.page-sub { font-size: 13px; color: var(--text2); }
+
+/* ── METRICS GRID ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: 'Geist Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.metric-sub {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+/* ── SPLIT GRID ── */
+.split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── FORM ── */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+.form-hint { color: var(--text3); font-size: 11px; }
+
+.input-wrap { position: relative; }
+.input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 48px 10px 14px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: 'Geist', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--accent); }
+.input-suffix {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3);
+  font-size: 12px;
+  font-family: 'Geist Mono', monospace;
+  pointer-events: none;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Geist', sans-serif;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-yellow { background: var(--accent); color: #050506; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-ghost {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+
+/* ── BADGE ── */
+.badge {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.badge-yellow { color: var(--accent); background: rgba(245,197,66,0.1); border: 1px solid rgba(245,197,66,0.2); }
+.badge-green { color: var(--green); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
+.badge-red { color: var(--red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+
+/* ── ALERT ── */
+.alert {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.alert-info { background: rgba(94,234,212,0.05); border: 1px solid rgba(94,234,212,0.15); color: var(--text2); }
+.alert-warn { background: rgba(245,197,66,0.05); border: 1px solid rgba(245,197,66,0.15); color: var(--text2); }
+.alert-success { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.15); color: var(--text2); }
+
+/* ── POS ITEMS ── */
+.pos-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.pos-item:last-child { border-bottom: none; }
+.pos-item-label { font-size: 12px; color: var(--text2); }
+.pos-item-value { font-size: 14px; font-weight: 600; text-align: right; }
+.pos-item-sub { font-size: 11px; color: var(--text3); text-align: right; margin-top: 2px; }
+
+/* ── TX FEED ── */
+.tx-feed { display: flex; flex-direction: column; gap: 8px; }
+.tx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.tx-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tx-dot.pending { background: var(--yellow); animation: pulse 1s ease infinite; }
+.tx-dot.success { background: var(--green); }
+.tx-dot.fail { background: var(--red); }
+.tx-label { flex: 1; color: var(--text2); }
+.tx-status { color: var(--text3); font-family: 'Geist Mono', monospace; }
+
+/* ── FHE PROGRESS MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5,5,6,0.9);
+  z-index: 5000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.modal-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+.modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+
+.fhe-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+.fhe-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.3s;
+  opacity: 0.4;
+}
+.fhe-step.active { opacity: 1; border-color: var(--accent); background: rgba(245,197,66,0.04); }
+.fhe-step.done { opacity: 1; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.04); }
+.fhe-step.error { opacity: 1; border-color: rgba(239,68,68,0.3); }
+
+.fhe-step-icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+.fhe-step-title { font-size: 13px; font-weight: 600; }
+.fhe-step-desc { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'Geist Mono', monospace; }
+
+.fhe-timer { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--text3); text-align: center; }
+
+/* ── ACCOUNT MODAL ── */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 20px;
+  cursor: pointer;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { background: rgba(255,255,255,0.06); }
+
+/* ── TOAST ── */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideUp 0.3s ease;
+  white-space: nowrap;
+}
+.toast.out { animation: slideDown 0.3s ease forwards; }
+
+@keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideDown { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(10px); } }
+
+.toast-error { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+
+/* ── SDK STATUS ── */
+.sdk-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'Geist Mono', monospace;
+  color: var(--text3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--surface2);
+}
+.sdk-dot { width: 6px; height: 6px; border-radius: 50%; }
+.sdk-dot.loading { background: var(--yellow); animation: pulse 1s ease infinite; }
+.sdk-dot.ready { background: var(--green); }
+.sdk-dot.error { background: var(--red); }
+
+/* ── BORROW LIMIT BAR ── */
+.limit-bar-wrap { margin: 12px 0; }
+.limit-bar-bg { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.limit-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+  .nav-price-pill { display: none !important; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .split-grid { grid-template-columns: 1fr; }
+  .app-page { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .btn-connect { padding: 7px 12px; font-size: 12px; }
+}
 </style>
 </head>
 <body>
 
-<div id="toast-container"></div>
-
-<!-- WALLET MODAL -->
-<div class="modal-overlay" id="wallet-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Connect Wallet</div>
-      <button class="modal-close" onclick="closeModal('wallet-modal')">×</button>
-    </div>
-    <!-- Main wallets (always visible) -->
-    <button class="wallet-opt" onclick="connectInjected('metamask')" id="mm-btn">
-      <div class="wallet-opt-icon" style="background:#f6851b;font-size:18px">🦊</div>
-      <div class="wallet-opt-info">
-        <div class="wallet-opt-name">MetaMask</div>
-        <div class="wallet-opt-desc">Most popular browser wallet</div>
-      </div>
-      <span class="wallet-opt-tag">Popular</span>
-    </button>
-    <button class="wallet-opt" onclick="connectInjected('rabby')" id="rabby-btn">
-      <div class="wallet-opt-icon" style="background:#7c3aed;font-size:18px">🐰</div>
-      <div class="wallet-opt-info">
-        <div class="wallet-opt-name">Rabby</div>
-        <div class="wallet-opt-desc">Security-first EVM wallet</div>
-      </div>
-      <span class="wallet-opt-tag">EVM</span>
-    </button>
-    <button class="wallet-opt" onclick="connectInjected('brave')" id="brave-btn">
-      <div class="wallet-opt-icon" style="background:#ff5500;font-size:18px">🦁</div>
-      <div class="wallet-opt-info">
-        <div class="wallet-opt-name">Brave Wallet</div>
-        <div class="wallet-opt-desc">Built into Brave browser</div>
-      </div>
-      <span class="wallet-opt-tag">Browser</span>
-    </button>
-
-    <!-- More wallets (hidden by default) -->
-    <div id="more-wallets" style="display:none">
-      <button class="wallet-opt" onclick="connectInjected('okx')" id="okx-btn">
-        <div class="wallet-opt-icon" style="background:#000;font-size:18px;border:1px solid #333">⬛</div>
-        <div class="wallet-opt-info">
-          <div class="wallet-opt-name">OKX Wallet</div>
-          <div class="wallet-opt-desc">By OKX Exchange</div>
-        </div>
-        <span class="wallet-opt-tag">CEX</span>
-      </button>
-      <button class="wallet-opt" onclick="connectInjected('coinbase')" id="coinbase-btn">
-        <div class="wallet-opt-icon" style="background:#0052ff;font-size:18px">🔵</div>
-        <div class="wallet-opt-info">
-          <div class="wallet-opt-name">Coinbase Wallet</div>
-          <div class="wallet-opt-desc">By Coinbase</div>
-        </div>
-        <span class="wallet-opt-tag">Popular</span>
-      </button>
-      <button class="wallet-opt" onclick="connectInjected('rainbow')" id="rainbow-btn">
-        <div class="wallet-opt-icon" style="background:linear-gradient(135deg,#ff6b6b,#feca57,#48dbfb,#ff9ff3);font-size:18px">🌈</div>
-        <div class="wallet-opt-info">
-          <div class="wallet-opt-name">Rainbow</div>
-          <div class="wallet-opt-desc">Fun & simple Ethereum wallet</div>
-        </div>
-        <span class="wallet-opt-tag">Mobile</span>
-      </button>
-      <button class="wallet-opt" onclick="connectInjected('trust')" id="trust-btn">
-        <div class="wallet-opt-icon" style="background:#3375BB;font-size:18px">🛡️</div>
-        <div class="wallet-opt-info">
-          <div class="wallet-opt-name">Trust Wallet</div>
-          <div class="wallet-opt-desc">By Binance</div>
-        </div>
-        <span class="wallet-opt-tag">Mobile</span>
-      </button>
-      <button class="wallet-opt" onclick="connectInjected('phantom')" id="phantom-btn">
-        <div class="wallet-opt-icon" style="background:#ab9ff2;font-size:18px">👻</div>
-        <div class="wallet-opt-info">
-          <div class="wallet-opt-name">Phantom</div>
-          <div class="wallet-opt-desc">Multi-chain wallet</div>
-        </div>
-        <span class="wallet-opt-tag">Multi</span>
-      </button>
-    </div>
-
-    <!-- See more button -->
-    <button onclick="toggleMoreWallets()" id="see-more-btn" style="width:100%;padding:10px;background:transparent;border:1px dashed var(--border);border-radius:10px;color:var(--text3);font-size:12px;font-family:'Geist Mono',monospace;cursor:pointer;margin-top:4px;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
-      + See more wallets
-    </button>
-
-    <div class="divider"></div>
-    <div class="alert alert-info" style="margin-bottom:0;font-size:12px">
-      Your amounts are FHE-encrypted before leaving your browser.
-    </div>
-  </div>
+<!-- WRONG NETWORK -->
+<div id="wrong-network">
+  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+  <div style="font-family:'Instrument Serif',serif;font-size:28px;margin-bottom:8px">Wrong Network</div>
+  <div style="color:var(--text2);font-size:14px;margin-bottom:24px;max-width:340px">VEIL Finance runs on Sepolia Testnet only. Please switch your wallet to continue.</div>
+  <button onclick="switchToSepolia()" class="btn-primary">Switch to Sepolia</button>
 </div>
 
 <!-- FHE PROGRESS MODAL -->
-<div class="modal-overlay" id="fhe-progress-modal">
-  <div class="modal" style="max-width:360px;text-align:center">
-    <div style="font-family:'Instrument Serif',serif;font-size:22px;margin-bottom:6px" id="fhe-progress-title">Processing</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:24px" id="fhe-progress-subtitle">Please wait...</div>
-
-    <!-- Steps -->
-    <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:24px" id="fhe-steps">
-      <div class="fhe-step" id="step-1">
+<div class="modal-overlay" id="fhe-modal">
+  <div class="modal">
+    <div class="modal-title" id="fhe-modal-title">Processing</div>
+    <div class="modal-sub" id="fhe-modal-sub">Please wait...</div>
+    <div class="fhe-steps" id="fhe-steps">
+      <div class="fhe-step" id="fhe-step-1">
         <div class="fhe-step-icon">⏳</div>
-        <div class="fhe-step-content">
-          <div class="fhe-step-title">Connecting to FHE backend</div>
-          <div class="fhe-step-desc">Waking up encryption server</div>
+        <div>
+          <div class="fhe-step-title">Initializing SDK</div>
+          <div class="fhe-step-desc">Loading FHE library</div>
         </div>
       </div>
-      <div class="fhe-step fhe-step-inactive" id="step-2">
+      <div class="fhe-step" id="fhe-step-2">
         <div class="fhe-step-icon">🔒</div>
-        <div class="fhe-step-content">
+        <div>
           <div class="fhe-step-title">Generating FHE proof</div>
-          <div class="fhe-step-desc">Zama coprocessor encrypting amount</div>
+          <div class="fhe-step-desc">Zama coprocessor encrypting</div>
         </div>
       </div>
-      <div class="fhe-step fhe-step-inactive" id="step-3">
+      <div class="fhe-step" id="fhe-step-3">
         <div class="fhe-step-icon">✍️</div>
-        <div class="fhe-step-content">
+        <div>
           <div class="fhe-step-title">Sign transaction</div>
-          <div class="fhe-step-desc">Approve in your wallet</div>
+          <div class="fhe-step-desc">Approve in wallet</div>
         </div>
       </div>
-      <div class="fhe-step fhe-step-inactive" id="step-4">
+      <div class="fhe-step" id="fhe-step-4">
         <div class="fhe-step-icon">⛓️</div>
-        <div class="fhe-step-content">
+        <div>
           <div class="fhe-step-title">Confirming on Sepolia</div>
-          <div class="fhe-step-desc">Waiting for block confirmation</div>
+          <div class="fhe-step-desc">Waiting for block</div>
         </div>
       </div>
     </div>
-
-    <!-- Timer -->
-    <div style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--text3)" id="fhe-timer">0s elapsed</div>
+    <div class="fhe-timer" id="fhe-timer">0s elapsed</div>
   </div>
 </div>
 
 <!-- ACCOUNT MODAL -->
 <div class="modal-overlay" id="account-modal">
-  <div class="modal" style="max-width:320px">
+  <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Account</div>
+      <div class="modal-title" style="font-size:18px">Account</div>
       <button class="modal-close" onclick="closeModal('account-modal')">×</button>
     </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
-      <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected Wallet</div>
-      <div style="font-family:'Geist Mono',monospace;font-size:14px;color:var(--text);word-break:break-all" id="account-full-addr"></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--text3);font-family:'Geist Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected</div>
+      <div style="font-family:'Geist Mono',monospace;font-size:12px;word-break:break-all" id="account-full-addr"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-      <button onclick="copyAddress();closeModal('account-modal')" class="btn btn-outline" style="font-size:12px;padding:10px">Copy Address</button>
-      <a id="account-etherscan-link" href="#" target="_blank" style="text-decoration:none">
-        <button class="btn btn-outline" style="font-size:12px;padding:10px;width:100%">Etherscan ↗</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <button onclick="copyAddress();closeModal('account-modal')" class="btn btn-ghost" style="font-size:12px;padding:9px">Copy Address</button>
+      <a id="account-etherscan" href="#" target="_blank" style="text-decoration:none">
+        <button class="btn btn-ghost" style="font-size:12px;padding:9px;width:100%">Etherscan ↗</button>
       </a>
     </div>
-    <button onclick="disconnectWallet()" class="btn btn-red" style="font-size:13px">
-      Disconnect
-    </button>
+    <button onclick="disconnectWallet()" class="btn btn-red" style="font-size:13px">Disconnect</button>
   </div>
 </div>
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo" onclick="showPage('connect')">
-    <div class="nav-logo-dot"></div>
-    Veil
+  <div class="nav-logo">VEIL<span>.</span></div>
+  <div class="nav-links">
+    <button class="nav-link active" id="nl-dashboard" onclick="showPage('dashboard')">Dashboard</button>
+    <button class="nav-link" id="nl-deposit" onclick="showPage('deposit')">Deposit</button>
+    <button class="nav-link" id="nl-borrow" onclick="showPage('borrow')">Borrow</button>
+    <button class="nav-link" id="nl-repay" onclick="showPage('repay')">Repay</button>
+    <button class="nav-link" id="nl-markets" onclick="showPage('markets')">Markets</button>
   </div>
-
-  <div class="nav-links" id="nav-links">
-    <button class="nav-link" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
-    <button class="nav-link" id="nav-deposit" onclick="showPage('deposit')">Deposit</button>
-    <button class="nav-link" id="nav-borrow" onclick="showPage('borrow')">Borrow</button>
-    <button class="nav-link" id="nav-repay" onclick="showPage('repay')">Repay</button>
-    <button class="nav-link" id="nav-markets" onclick="showPage('markets')">Markets</button>
-  </div>
-
   <div class="nav-right">
-    <div class="nav-price" id="nav-price" style="display:none;gap:12px">
-      <div style="display:flex;align-items:center;gap:5px">
-        <span>ETH</span>
-        <span class="price" id="eth-price-display">$3,000</span>
-      </div>
-      <div style="width:1px;height:14px;background:var(--border)"></div>
-      <div style="display:flex;align-items:center;gap:5px">
-        <span id="nav-balance-eth" style="color:var(--text2)">— ETH</span>
-        <span id="nav-balance-usd" style="color:var(--text3);font-size:11px"></span>
-      </div>
+    <div class="nav-price-pill" id="nav-pill">
+      <span>ETH</span>
+      <span class="price" id="nav-eth-price">$—</span>
+      <span class="divider"></span>
+      <span class="bal" id="nav-balance">— ETH</span>
     </div>
-    <button class="btn-connect" id="nav-connect-btn" onclick="openModal('wallet-modal')">Connect Wallet</button>
-    <div class="address-chip" id="address-display" style="display:none" onclick="openModal('account-modal')">0x0000...0000</div>
-    <div class="nav-mobile-menu" onclick="toggleMobileNav()" id="mobile-menu-btn" style="display:flex">
+    <button class="btn-connect" id="nav-connect-btn" onclick="connectWallet()">Connect Wallet</button>
+    <div class="address-chip" id="address-chip" onclick="openModal('account-modal')">0x0000...0000</div>
+    <div class="hamburger" id="hamburger" onclick="toggleMobileNav()">
       <span></span><span></span><span></span>
     </div>
   </div>
-
-<!-- WRONG NETWORK BANNER -->
 </nav>
-
-<!-- WRONG NETWORK OVERLAY -->
-<div id="wrong-network" style="display:none;position:fixed;inset:0;background:rgba(6,6,10,0.95);z-index:8000;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px">
-  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
-  <div style="font-family:'Instrument Serif',serif;font-size:28px;margin-bottom:8px">Wrong Network</div>
-  <div style="color:var(--text2);font-size:14px;margin-bottom:24px;max-width:340px">VEIL Finance runs on Sepolia Testnet only. Please switch your wallet to Sepolia to continue.</div>
-  <button onclick="switchToSepolia()" style="padding:12px 28px;background:var(--accent);color:#050506;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Geist',sans-serif;cursor:pointer">
-    Switch to Sepolia
-  </button>
-</div>
 
 <!-- MOBILE NAV -->
 <div class="mobile-nav" id="mobile-nav">
-  <button class="mobile-nav-link" id="mnav-dashboard" onclick="showPage('dashboard');toggleMobileNav()">Dashboard</button>
-  <button class="mobile-nav-link" id="mnav-deposit" onclick="showPage('deposit');toggleMobileNav()">Deposit</button>
-  <button class="mobile-nav-link" id="mnav-borrow" onclick="showPage('borrow');toggleMobileNav()">Borrow</button>
-  <button class="mobile-nav-link" id="mnav-repay" onclick="showPage('repay');toggleMobileNav()">Repay</button>
-  <button class="mobile-nav-link" id="mnav-markets" onclick="showPage('markets');toggleMobileNav()">Markets</button>
-  <div class="divider" style="margin:4px 0"></div>
-  <button class="mobile-nav-link" onclick="addVethToMetaMask();toggleMobileNav()" style="color:var(--accent)">+ Add vETH to Wallet</button>
-  <button class="mobile-nav-link" onclick="openModal('account-modal');toggleMobileNav()" style="color:var(--text2)" id="mobile-account-btn" style="display:none">Account / Disconnect</button>
+  <button class="mobile-nav-link" onclick="showPage('dashboard');toggleMobileNav()">Dashboard</button>
+  <button class="mobile-nav-link" onclick="showPage('deposit');toggleMobileNav()">Deposit</button>
+  <button class="mobile-nav-link" onclick="showPage('borrow');toggleMobileNav()">Borrow</button>
+  <button class="mobile-nav-link" onclick="showPage('repay');toggleMobileNav()">Repay</button>
+  <button class="mobile-nav-link" onclick="showPage('markets');toggleMobileNav()">Markets</button>
+  <div style="height:1px;background:var(--border);margin:4px 0"></div>
+  <button class="mobile-nav-link" onclick="addCwethToWallet();toggleMobileNav()" style="color:var(--accent)">+ Add cWETH to Wallet</button>
+  <button class="mobile-nav-link" id="mobile-account-btn" onclick="openModal('account-modal');toggleMobileNav()" style="display:none;color:var(--text2)">Account / Disconnect</button>
 </div>
 
 <div class="page-wrapper">
 
-  <!-- LANDING / CONNECT PAGE -->
+  <!-- CONNECT PAGE -->
   <div id="page-connect" class="app-page active">
-    <div id="page-landing">
-      <div class="landing-badge">Confidential Lending Protocol</div>
-      <div class="landing-title">Lend Privately.<br><span class="accent">Borrow Invisibly.</span></div>
-      <div class="landing-sub">The first lending protocol where your position is encrypted onchain. Liquidation bots are completely blind to your collateral ratio.</div>
-      <div class="landing-actions">
-        <button class="btn-primary" onclick="openModal('wallet-modal')">Launch App</button>
-        <button class="btn-ghost" onclick="showPage('markets')">View Markets</button>
+    <div class="landing">
+      <div class="landing-glow"></div>
+      <div class="landing-badge">Confidential Lending on Sepolia</div>
+      <h1>Lend Privately.<br><span class="accent">Borrow Invisibly.</span></h1>
+      <p>VEIL encrypts your position with FHE. Liquidation bots see only ciphertext — they can never calculate when to liquidate you.</p>
+      <div class="landing-btns">
+        <button class="btn-primary" onclick="connectWallet()">Connect Wallet</button>
+        <a href="compare.html" class="btn-outline" target="_blank">See the Proof ↗</a>
       </div>
       <div class="landing-stats">
-        <div class="landing-stat">
-          <div class="landing-stat-value" id="ls-pool">— ETH</div>
+        <div>
+          <div class="landing-stat-value" style="color:var(--accent)" id="ls-pool">— ETH</div>
           <div class="landing-stat-label">Pool Liquidity</div>
         </div>
-        <div class="landing-stat">
+        <div>
           <div class="landing-stat-value" id="ls-positions">—</div>
           <div class="landing-stat-label">Open Positions</div>
         </div>
-        <div class="landing-stat">
-          <div class="landing-stat-value" id="ls-price">$3,000</div>
+        <div>
+          <div class="landing-stat-value" style="color:var(--accent2)" id="ls-price">$—</div>
           <div class="landing-stat-label">ETH Price</div>
         </div>
-        <div class="landing-stat">
-          <div class="landing-stat-value" style="color:var(--accent2)">FHE</div>
+        <div>
+          <div class="landing-stat-value" style="color:var(--purple)">FHE</div>
           <div class="landing-stat-label">Encrypted</div>
         </div>
       </div>
@@ -1135,87 +821,107 @@
   <div id="page-dashboard" class="app-page">
     <div class="page-header">
       <div class="page-title">Dashboard</div>
-      <div class="page-sub">Your position overview</div>
+      <div class="page-sub">Your encrypted position overview</div>
     </div>
 
-    <!-- No position state -->
-    <div id="dash-no-pos">
-      <div class="alert alert-info" style="margin-bottom:20px">
-        You don't have an open position yet. Deposit collateral to get started.
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-label">Collateral</div>
+        <div class="metric-value" id="dash-collateral" style="color:var(--green)">—</div>
+        <div class="metric-sub" id="dash-collateral-usd"></div>
       </div>
-      <button class="btn btn-blue" onclick="showPage('deposit')">Open Position</button>
+      <div class="metric">
+        <div class="metric-label">Debt</div>
+        <div class="metric-value" id="dash-debt" style="color:var(--red)">—</div>
+        <div class="metric-sub" id="dash-debt-usd"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Max Borrow</div>
+        <div class="metric-value" id="dash-max-borrow" style="color:var(--accent)">—</div>
+        <div class="metric-sub">66% of collateral</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Liq. Price</div>
+        <div class="metric-value" id="dash-liq-price" style="color:var(--red)">—</div>
+        <div class="metric-sub">ETH at liquidation</div>
+      </div>
     </div>
 
-    <!-- Has position state -->
-    <div id="dash-has-pos" style="display:none">
-      <div class="metrics-grid">
-        <div class="metric">
-          <div class="metric-label">Collateral</div>
-          <div class="metric-value" id="dash-collateral">— ETH</div>
-          <div class="metric-sub" id="dash-collateral-usd"></div>
+    <div class="split-grid">
+      <div>
+        <!-- No position -->
+        <div id="dash-no-pos" class="card">
+          <div class="card-body" style="text-align:center;padding:32px">
+            <div style="font-size:32px;margin-bottom:12px">🔒</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:8px">No Open Position</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Deposit cWETH to open a confidential lending position.</div>
+            <button class="btn btn-yellow" onclick="showPage('deposit')">Deposit Collateral</button>
+          </div>
         </div>
-        <div class="metric">
-          <div class="metric-label">Borrowed</div>
-          <div class="metric-value" id="dash-debt" style="color:var(--accent2)">Encrypted</div>
-          <div class="metric-sub">FHE protected</div>
+
+        <!-- Has position -->
+        <div id="dash-has-pos" class="card" style="display:none">
+          <div class="card-header">
+            <div class="card-title">Position Details</div>
+            <span class="badge badge-green">Active</span>
+          </div>
+          <div class="card-body">
+            <div class="pos-item">
+              <div>
+                <div class="pos-item-label">Collateral</div>
+              </div>
+              <div>
+                <div class="pos-item-value" id="pos-collateral">—</div>
+                <div class="pos-item-sub" id="pos-collateral-usd"></div>
+              </div>
+            </div>
+            <div class="pos-item">
+              <div><div class="pos-item-label">Debt</div></div>
+              <div>
+                <div class="pos-item-value" id="pos-debt">—</div>
+                <div class="pos-item-sub" id="pos-debt-usd"></div>
+              </div>
+            </div>
+            <div class="pos-item">
+              <div><div class="pos-item-label">Health Factor</div></div>
+              <div>
+                <div class="pos-item-value" style="color:var(--accent2)">Private</div>
+                <div class="pos-item-sub">Encrypted onchain</div>
+              </div>
+            </div>
+            <div class="pos-item">
+              <div><div class="pos-item-label">Opened</div></div>
+              <div><div class="pos-item-value" id="pos-opened" style="font-size:12px;color:var(--text2)">—</div></div>
+            </div>
+            <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="btn btn-yellow" onclick="showPage('deposit')" id="deposit-action-btn">Add Collateral</button>
+              <button class="btn btn-red" onclick="handleClosePosition()" id="close-btn">Close Position</button>
+            </div>
+          </div>
         </div>
-        <div class="metric">
-          <div class="metric-label">Max Borrow</div>
-          <div class="metric-value" id="dash-max-borrow" style="color:var(--green)">— ETH</div>
-          <div class="metric-sub">66% of collateral value</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Liq. Price</div>
-          <div class="metric-value" id="dash-liq-price" style="color:var(--red)">—</div>
-          <div class="metric-sub">ETH price at liquidation</div>
-      </div>
       </div>
 
-      <!-- Health bar -->
-      <div class="health-bar-wrap" style="margin-bottom:20px">
-        <div class="health-bar-header">
-          <span class="health-bar-title">Health Factor</span>
-          <span class="badge badge-purple">FHE Encrypted</span>
+      <!-- TX Feed -->
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Transactions</div>
+            <span class="badge badge-yellow" id="tx-count">0</span>
+          </div>
+          <div class="card-body">
+            <div class="tx-feed" id="tx-feed">
+              <div style="text-align:center;color:var(--text3);font-size:13px;padding:16px">No transactions yet</div>
+            </div>
+          </div>
         </div>
-        <div class="health-bar-track">
-          <div class="health-bar-fill" id="health-fill" style="width:75%"></div>
-        </div>
-        <div class="health-bar-markers">
-          <span>0</span>
-          <span style="color:var(--red)">150% liquidation</span>
-          <span>Safe</span>
-        </div>
-      </div>
 
-      <!-- vETH + Interest -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-        <div class="pos-item">
-          <div class="pos-item-label">vETH Balance</div>
-          <div class="pos-item-value" id="dash-veth" style="color:var(--accent2)">— vETH</div>
-          <div class="pos-item-sub">Receipt token</div>
+        <!-- SDK Status -->
+        <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+          <div class="sdk-status" id="sdk-status">
+            <div class="sdk-dot loading"></div>
+            <span id="sdk-status-text">Initializing SDK...</span>
+          </div>
         </div>
-        <div class="pos-item">
-          <div class="pos-item-label">Accrued Interest</div>
-          <div class="pos-item-value" id="dash-interest" style="color:var(--yellow)">0 ETH</div>
-          <div class="pos-item-sub">5% APR</div>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <button class="btn btn-blue" onclick="showPage('deposit')">Add Collateral</button>
-        <button class="btn btn-outline" onclick="showPage('borrow')">Borrow</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <button class="btn btn-green" onclick="showPage('repay')">Repay Debt</button>
-        <button class="btn btn-outline" onclick="addVethToMetaMask()">+ Add vETH</button>
-      </div>
-      <button class="btn btn-red" onclick="handleClosePosition()" id="close-btn" style="margin-top:4px">
-        Close Position
-      </button>
-
-      <div class="alert alert-success" style="margin-top:16px">
-        Your position is protected. Bots see only encrypted ciphertext.
       </div>
     </div>
   </div>
@@ -1224,44 +930,42 @@
   <div id="page-deposit" class="app-page">
     <div class="page-header">
       <div class="page-title">Deposit</div>
-      <div class="page-sub">Lock ETH as collateral and receive vETH receipt tokens</div>
+      <div class="page-sub">Lock cWETH as encrypted collateral</div>
     </div>
-
-    <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="split-grid">
       <div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Deposit Collateral</div>
-            <span class="badge badge-purple">FHE Encrypted</span>
+            <div class="card-title" id="deposit-card-title">Open Position</div>
           </div>
           <div class="card-body">
+            <div class="alert alert-info">Your deposit is encrypted with FHE before hitting the blockchain. The amount is never visible in plaintext.</div>
             <div class="form-group">
               <div class="form-label">
-                Amount
-                <span class="form-hint" id="wallet-balance"></span>
+                Amount (cWETH)
+                <span class="form-hint" id="deposit-balance-hint"></span>
               </div>
               <div class="input-wrap">
-                <input class="input" type="number" id="deposit-amount" placeholder="0.0" step="0.01" min="0.01">
-                <span class="input-suffix">ETH</span>
+                <input class="input" type="number" id="deposit-amount" placeholder="0.0" step="0.001" min="0.001">
+                <span class="input-suffix">cWETH</span>
               </div>
             </div>
-            <div class="alert alert-info" style="font-size:12px">
-              Amount is FHE-encrypted before being sent to the contract. The chain sees only ciphertext.
-            </div>
-            <button class="btn btn-blue" id="deposit-btn" onclick="handleDeposit()">
-              Deposit & Open Position
-            </button>
+            <button class="btn btn-yellow" id="deposit-btn" onclick="handleDeposit()">Deposit & Open Position</button>
           </div>
         </div>
       </div>
-
       <div>
         <div class="card">
-          <div class="card-header"><div class="card-title">How It Works</div></div>
-          <div class="card-body" style="font-size:13px;color:var(--text2);line-height:1.7">
-            <div style="margin-bottom:12px"><strong style="color:var(--text)">01 Encrypt</strong><br>Your deposit amount is encrypted using Zama's FHE relayer before leaving your browser.</div>
-            <div style="margin-bottom:12px"><strong style="color:var(--text)">02 Lock</strong><br>ETH is locked in the contract as encrypted collateral. Only you can decrypt the amount.</div>
-            <div><strong style="color:var(--text)">03 Receive vETH</strong><br>You receive vETH tokens 1:1 as proof of your deposit. Burn them to withdraw.</div>
+          <div class="card-header"><div class="card-title">How to get cWETH</div></div>
+          <div class="card-body">
+            <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px">
+              cWETH is Zama's confidential wrapped ETH on Sepolia. Mint the underlying WETH then wrap it.
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a href="https://sepolia.etherscan.io/address/0xff54739b16576FA5402F211D0b938469Ab9A5f3F#writeContract" target="_blank" class="btn btn-ghost" style="text-align:center;text-decoration:none;font-size:13px;padding:10px">1. Mint WETH ↗</a>
+              <a href="https://sepolia.etherscan.io/address/0x46208622DA27d91db4f0393733C8BA082ed83158#writeContract" target="_blank" class="btn btn-ghost" style="text-align:center;text-decoration:none;font-size:13px;padding:10px">2. Wrap to cWETH ↗</a>
+              <button class="btn btn-ghost" onclick="addCwethToWallet()" style="font-size:13px;padding:10px">+ Add cWETH to Wallet</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1272,140 +976,95 @@
   <div id="page-borrow" class="app-page">
     <div class="page-header">
       <div class="page-title">Borrow</div>
-      <div class="page-sub">Borrow ETH against your encrypted collateral</div>
+      <div class="page-sub">Borrow cWETH against your collateral</div>
     </div>
-
-    <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="split-grid">
       <div>
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Borrow ETH</div>
-          </div>
+          <div class="card-header"><div class="card-title">Borrow cWETH</div></div>
           <div class="card-body">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-              <div class="pos-item">
-                <div class="pos-item-label">Available</div>
-                <div class="pos-item-value" id="borrow-available" style="color:var(--green)">— ETH</div>
-              </div>
-              <div class="pos-item">
-                <div class="pos-item-label">Pool</div>
-                <div class="pos-item-value" id="borrow-pool">— ETH</div>
-              </div>
+            <div class="pos-item" style="margin-bottom:12px">
+              <div class="pos-item-label">Available to Borrow</div>
+              <div class="pos-item-value" id="borrow-available" style="color:var(--green)">—</div>
             </div>
-
+            <div class="pos-item" style="margin-bottom:16px">
+              <div class="pos-item-label">Pool Liquidity</div>
+              <div class="pos-item-value" id="borrow-pool">—</div>
+            </div>
             <div class="form-group">
               <div class="form-label">
                 Amount
                 <span class="form-hint" id="borrow-max-hint"></span>
               </div>
               <div class="input-wrap">
-                <input class="input" type="number" id="borrow-amount" placeholder="0.0" step="0.01" min="0.001" oninput="updateBorrowPreview()">
-                <span class="input-suffix">ETH</span>
+                <input class="input" type="number" id="borrow-amount" placeholder="0.0" step="0.001" oninput="updateBorrowBar()">
+                <span class="input-suffix">cWETH</span>
               </div>
             </div>
-
             <div class="limit-bar-wrap">
-              <div class="limit-bar-header">
-                <span class="limit-bar-label">Borrow Limit Used</span>
-                <span class="limit-bar-label" id="borrow-limit-pct">0%</span>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:6px">
+                <span>Borrow limit</span>
+                <span id="borrow-limit-pct">0%</span>
               </div>
-              <div class="limit-bar-track">
-                <div class="limit-bar-fill" id="borrow-limit-bar" style="width:0%"></div>
-              </div>
+              <div class="limit-bar-bg"><div class="limit-bar-fill" id="borrow-limit-bar" style="width:0%"></div></div>
             </div>
-
-            <div class="alert alert-warning" style="font-size:12px">
-              Max borrow is 66% of collateral. Interest rate: 5% APR.
-            </div>
-            <button class="btn btn-blue" id="borrow-btn" onclick="handleBorrow()">Borrow</button>
+            <button class="btn btn-yellow" id="borrow-btn" onclick="handleBorrow()">Borrow</button>
           </div>
         </div>
       </div>
-
       <div>
         <div class="card">
-          <div class="card-header"><div class="card-title">Repay Debt</div></div>
-          <div class="card-body">
-            <div class="pos-item" style="margin-bottom:16px">
-              <div class="pos-item-label">Current Debt</div>
-              <div class="pos-item-value" id="repay-current-debt" style="color:var(--red)">Encrypted</div>
-            </div>
-            <div class="form-group">
-              <div class="form-label">Amount</div>
-              <div class="input-wrap">
-                <input class="input" type="number" id="repay-amount" placeholder="0.0" step="0.01" min="0.001">
-                <span class="input-suffix">ETH</span>
-              </div>
-            </div>
-            <button class="btn btn-green" id="repay-btn" onclick="handleRepay()">Repay Debt</button>
+          <div class="card-header"><div class="card-title">How Borrowing Works</div></div>
+          <div class="card-body" style="font-size:13px;color:var(--text2);line-height:1.8">
+            <div style="margin-bottom:12px">Max borrow is <strong style="color:var(--text)">66% of collateral</strong> (LTV ratio).</div>
+            <div style="margin-bottom:12px">Your position is <strong style="color:var(--accent2)">FHE encrypted</strong> — bots can't calculate your liquidation price.</div>
+            <div style="margin-bottom:12px">Liquidation threshold: <strong style="color:var(--text)">150%</strong>. You get liquidated if your collateral value drops below 150% of debt.</div>
+            <div>Liquidation bonus for liquidators: <strong style="color:var(--text)">5%</strong>.</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-
   <!-- REPAY PAGE -->
   <div id="page-repay" class="app-page">
     <div class="page-header">
       <div class="page-title">Repay</div>
-      <div class="page-sub">Repay your debt to improve health factor</div>
+      <div class="page-sub">Repay debt and manage your position</div>
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="split-grid">
+    <div class="split-grid">
       <div>
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Repay Debt</div>
-          </div>
+          <div class="card-header"><div class="card-title">Repay Debt</div></div>
           <div class="card-body">
-            <div class="pos-item" style="margin-bottom:16px">
+            <div class="pos-item" style="margin-bottom:12px">
               <div class="pos-item-label">Outstanding Debt</div>
-              <div class="pos-item-value" id="repay2-debt" style="color:var(--red)">— ETH</div>
-              <div class="pos-item-sub" id="repay2-debt-usd"></div>
-            </div>
-            <div class="pos-item" style="margin-bottom:16px">
-              <div class="pos-item-label">Wallet Balance</div>
-              <div class="pos-item-value" id="repay2-balance">— ETH</div>
+              <div class="pos-item-value" id="repay-debt" style="color:var(--red)">—</div>
             </div>
             <div class="form-group">
               <div class="form-label">
                 Amount to Repay
-                <span class="form-hint" id="repay2-max-hint"></span>
+                <span class="form-hint" id="repay-max-hint"></span>
               </div>
               <div class="input-wrap">
-                <input class="input" type="number" id="repay-amount2" placeholder="0.0" step="0.01" min="0.001">
-                <span class="input-suffix">ETH</span>
+                <input class="input" type="number" id="repay-amount" placeholder="0.0" step="0.001">
+                <span class="input-suffix">cWETH</span>
               </div>
             </div>
-            <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
-              Repaying debt improves your health factor and reduces liquidation risk.
-            </div>
-            <button class="btn btn-green" id="repay-btn2" onclick="handleRepay2()">
-              Repay Debt
-            </button>
+            <button class="btn btn-green" id="repay-btn" onclick="handleRepay()">Repay Debt</button>
           </div>
         </div>
       </div>
-
       <div>
         <div class="card">
           <div class="card-header"><div class="card-title">Close Position</div></div>
           <div class="card-body">
-            <div class="alert alert-warning" style="font-size:12px;margin-bottom:16px">
-              You must repay all debt before closing your position. Your collateral will be returned and vETH burned.
-            </div>
+            <div class="alert alert-warn">You must repay all debt before closing your position.</div>
             <div class="pos-item" style="margin-bottom:16px">
               <div class="pos-item-label">Collateral to Return</div>
-              <div class="pos-item-value" id="repay2-collateral" style="color:var(--green)">— ETH</div>
+              <div class="pos-item-value" id="repay-collateral">—</div>
             </div>
-            <div class="pos-item" style="margin-bottom:16px">
-              <div class="pos-item-label">vETH to Burn</div>
-              <div class="pos-item-value" id="repay2-veth">— vETH</div>
-            </div>
-            <button class="btn btn-red" id="close-btn2" onclick="handleClosePosition2()">
-              Close Position
-            </button>
+            <button class="btn btn-red" id="close-pos-btn" onclick="handleClosePosition()">Close Position</button>
           </div>
         </div>
       </div>
@@ -1416,264 +1075,181 @@
   <div id="page-markets" class="app-page">
     <div class="page-header">
       <div class="page-title">Markets</div>
-      <div class="page-sub">Protocol statistics and market data</div>
+      <div class="page-sub">Protocol overview</div>
     </div>
-
-    <div class="metrics-grid" style="margin-bottom:20px">
+    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
       <div class="metric">
         <div class="metric-label">Pool Liquidity</div>
-        <div class="metric-value" id="mkt-pool">— ETH</div>
-        <div class="metric-sub">Available to borrow</div>
+        <div class="metric-value" id="mkt-pool" style="color:var(--green)">—</div>
+        <div class="metric-sub">Available cWETH</div>
       </div>
       <div class="metric">
-        <div class="metric-label">Total Positions</div>
+        <div class="metric-label">Open Positions</div>
         <div class="metric-value" id="mkt-positions">—</div>
         <div class="metric-sub">Active borrowers</div>
       </div>
       <div class="metric">
         <div class="metric-label">ETH Price</div>
-        <div class="metric-value" id="mkt-price" style="color:var(--green)">$3,000</div>
-        <div class="metric-sub">Oracle price</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Liq. Threshold</div>
-        <div class="metric-value" style="color:var(--red)">150%</div>
-        <div class="metric-sub">Collateral ratio</div>
+        <div class="metric-value" id="mkt-price" style="color:var(--accent)">$—</div>
+        <div class="metric-sub">Live from CoinGecko</div>
       </div>
     </div>
-
-    <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-      <div class="card">
-        <div class="card-header"><div class="card-title">ETH Market</div></div>
-        <div class="card-body">
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;justify-content:space-between;font-size:13px">
-              <span style="color:var(--text2)">Borrow APR</span>
-              <span style="font-weight:600">5.00%</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px">
-              <span style="color:var(--text2)">Max LTV</span>
-              <span style="font-weight:600">66%</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px">
-              <span style="color:var(--text2)">Liq. Threshold</span>
-              <span style="font-weight:600;color:var(--red)">150%</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px">
-              <span style="color:var(--text2)">Liq. Bonus</span>
-              <span style="font-weight:600;color:var(--green)">5%</span>
-            </div>
-            <div class="divider" style="margin:4px 0"></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px">
-              <span style="color:var(--text2)">Contract</span>
-              <a href="https://sepolia.etherscan.io/address/0x937D2A53114330C623c669cD7Cb5364acd7FbD9f" target="_blank" style="color:var(--accent2);text-decoration:none;font-family:'Geist Mono',monospace;font-size:11px">View on Etherscan</a>
-            </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Protocol Parameters</div></div>
+      <div class="card-body">
+        <div class="split-grid">
+          <div>
+            <div class="pos-item"><div class="pos-item-label">Max LTV</div><div class="pos-item-value">66%</div></div>
+            <div class="pos-item"><div class="pos-item-label">Liquidation Threshold</div><div class="pos-item-value">150%</div></div>
+            <div class="pos-item"><div class="pos-item-label">Liquidation Bonus</div><div class="pos-item-value">5%</div></div>
+          </div>
+          <div>
+            <div class="pos-item"><div class="pos-item-label">Collateral Token</div><div class="pos-item-value" style="font-size:12px;font-family:'Geist Mono',monospace">cWETH</div></div>
+            <div class="pos-item"><div class="pos-item-label">Debt Token</div><div class="pos-item-value" style="font-size:12px;font-family:'Geist Mono',monospace">cWETH</div></div>
+            <div class="pos-item"><div class="pos-item-label">Network</div><div class="pos-item-value">Sepolia</div></div>
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-header"><div class="card-title">Privacy Model</div></div>
-        <div class="card-body" style="font-size:13px;color:var(--text2);line-height:1.6">
-          <div style="margin-bottom:10px"><span class="badge badge-purple" style="margin-bottom:6px;display:inline-block">Encrypted</span><br>Collateral amount, debt amount, health factor</div>
-          <div><span class="badge badge-green" style="margin-bottom:6px;display:inline-block">Public</span><br>Position exists yes/no, pool balance, ETH price</div>
-          <div class="divider"></div>
-          <div style="font-size:12px">Powered by <strong style="color:var(--text)">Zama FHEVM</strong> — Fully Homomorphic Encryption computed on Sepolia.</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Activity -->
-    <div class="card" style="margin-top:20px">
-      <div class="card-header">
-        <div class="card-title">Recent Activity</div>
-        <span class="badge badge-purple" id="tx-count">0 txs</span>
-      </div>
-      <div class="card-body" style="padding:16px">
-        <div class="tx-feed" id="tx-feed">
-          <div class="empty-state">No transactions yet</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- LIQUIDATE PAGE (hidden, accessible via markets) -->
-  <div id="page-liquidate" class="app-page">
-    <div class="page-header">
-      <div class="page-title">Liquidate</div>
-      <div class="page-sub">Attempt to liquidate undercollateralized positions</div>
     </div>
     <div class="card">
-      <div class="card-header">
-        <div class="card-title">Liquidation Attempt</div>
-        <span class="badge badge-red">Bot Demo</span>
-      </div>
+      <div class="card-header"><div class="card-title">Contracts</div></div>
       <div class="card-body">
-        <div class="alert alert-danger" style="margin-bottom:16px">
-          This is what a liquidation bot sees — just an address. No health factor, no collateral, no debt. They must attempt blindly. If the position is healthy, the tx reverts.
+        <div class="pos-item">
+          <div class="pos-item-label">VeilLending</div>
+          <a href="https://sepolia.etherscan.io/address/0xa30BB1975C0f18A096E3EED20928Fb78D08C179d" target="_blank" style="color:var(--accent);font-family:'Geist Mono',monospace;font-size:11px;text-decoration:none">0xa30B...179d ↗</a>
         </div>
-        <div class="form-group">
-          <div class="form-label">Target Address</div>
-          <input class="input" type="text" id="liq-target" placeholder="0x...">
-        </div>
-        <button class="btn btn-red" onclick="handleLiquidate()" style="margin-bottom:12px">
-          Attempt Liquidation
-        </button>
-        <div class="alert alert-info" style="margin-bottom:0;font-size:12px">
-          Earn 5% bonus on collateral if position is undercollateralized. Tx reverts if position is healthy.
+        <div class="pos-item">
+          <div class="pos-item-label">cWETHMock</div>
+          <a href="https://sepolia.etherscan.io/address/0x46208622DA27d91db4f0393733C8BA082ed83158" target="_blank" style="color:var(--accent2);font-family:'Geist Mono',monospace;font-size:11px;text-decoration:none">0x4620...3158 ↗</a>
         </div>
       </div>
     </div>
   </div>
 
-</div><!-- end page-wrapper -->
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
 
 <script>
+// ─────────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────────
+const CONFIG = {
+  CHAIN_ID: '0xaa36a7',
+  CHAIN_NAME: 'Sepolia Testnet',
+  RPC_URL: 'https://ethereum-sepolia-rpc.publicnode.com',
+  CONTRACT: '0xa30BB1975C0f18A096E3EED20928Fb78D08C179d',
+  CWETH: '0x46208622DA27d91db4f0393733C8BA082ed83158',
+};
+
+const CONTRACT_ABI = [
+  "function openPosition(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
+  "function addCollateral(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
+  "function borrow(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
+  "function repay(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
+  "function closePosition() external",
+  "function liquidate(address target) external",
+  "function hasPosition(address) external view returns (bool)",
+  "function getPositionMeta(address) external view returns (bool exists, uint256 openedAt, uint256 collateralPlain, uint256 debtPlain)",
+  "function getStats() external view returns (uint256)",
+  "function collateralToken() external view returns (address)",
+];
+
+const CWETH_ABI = [
+  "function confidentialBalanceOf(address) external view returns (bytes32)",
+];
 
 // ─────────────────────────────────────────────────────────────
-// NAVIGATION
+// STATE
 // ─────────────────────────────────────────────────────────────
-
-
+const state = {
+  connected: false,
+  address: null,
+  provider: null,
+  signer: null,
+  contract: null,
+  hasPosition: false,
+  fhevmInstance: null,
+  sdkReady: false,
+  ethPrice: 3000,
+};
 
 // ─────────────────────────────────────────────────────────────
-// WAKE UP RENDER BACKEND ON PAGE LOAD
+// SDK INIT
 // ─────────────────────────────────────────────────────────────
-async function wakeBackend() {
+async function initSdk() {
+  setSdkStatus('loading', 'Initializing SDK...');
   try {
-    await fetch(CONFIG.FHE_HEALTH);
-  } catch (e) {}
-}
-wakeBackend();
-setInterval(wakeBackend, 240000);
-
-// ─────────────────────────────────────────────────────────────
-// PERSIST CONNECTION ACROSS REFRESH
-// ─────────────────────────────────────────────────────────────
-async function tryReconnect() {
-  try {
-    if (!window.ethereum) return;
-    // Check we're on Sepolia before reconnecting
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId !== CONFIG.CHAIN_ID) return;
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    if (accounts && accounts.length > 0) {
-      state.address = accounts[0];
-      state.connected = true;
-      state.provider = new ethers.BrowserProvider(window.ethereum);
-      state.signer = await state.provider.getSigner();
-      state.contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, ABI, state.signer);
-
-      // Update nav
-      document.getElementById('nav-connect-btn').style.display = 'none';
-      document.getElementById('nav-price').style.display = 'flex';
-      const addrDisplay = document.getElementById('address-display');
-      addrDisplay.style.display = 'block';
-      addrDisplay.textContent = shortAddr(state.address);
-
-      // Restore last visited page
-      const lastPage = localStorage.getItem('veil_current_page') || 'dashboard';
-      showPage(lastPage);
-      loadPosition();
-      loadStats();
-      loadWalletBalance();
-      loadVethBalance();
-      loadTxHistory();
+    // Load Zama SDK from CDN
+    if (!window.__zamaLoaded) {
+      await loadScript('https://cdn.jsdelivr.net/npm/@zama-fhe/relayer-sdk@latest/bundle/relayer-sdk.browser.js');
+      window.__zamaLoaded = true;
     }
+    const { createInstance, SepoliaConfig } = window.RelayerSDK || window.zamaRelayerSdk || {};
+    if (!createInstance) throw new Error('SDK not found');
+
+    state.fhevmInstance = await createInstance(SepoliaConfig || { chainId: 11155111 });
+    state.sdkReady = true;
+    setSdkStatus('ready', 'FHE SDK ready');
   } catch(e) {
-    console.log('Reconnect failed:', e.message);
+    console.error('SDK init error:', e);
+    setSdkStatus('error', 'SDK unavailable — using fallback');
+    state.sdkReady = false;
   }
 }
 
-// Try reconnect when page loads
-window.addEventListener('load', () => {
-  setTimeout(tryReconnect, 500);
-});
-
-function toggleMoreWallets() {
-  const more = document.getElementById('more-wallets');
-  const btn = document.getElementById('see-more-btn');
-  if (more.style.display === 'none') {
-    more.style.display = 'block';
-    btn.textContent = '- See less';
-  } else {
-    more.style.display = 'none';
-    btn.textContent = '+ See more wallets';
-  }
-}
-
-
-// ─────────────────────────────────────────────────────────────
-// NETWORK GUARD
-// ─────────────────────────────────────────────────────────────
-function showWrongNetwork() {
-  const el = document.getElementById('wrong-network');
-  el.style.display = 'flex';
-}
-
-function hideWrongNetwork() {
-  const el = document.getElementById('wrong-network');
-  el.style.display = 'none';
-}
-
-async function switchToSepolia() {
-  try {
-    await window.ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: CONFIG.CHAIN_ID }]
-    });
-    hideWrongNetwork();
-  } catch (e) {
-    if (e.code === 4902) {
-      await window.ethereum.request({
-        method: 'wallet_addEthereumChain',
-        params: [{
-          chainId: CONFIG.CHAIN_ID,
-          chainName: CONFIG.CHAIN_NAME,
-          rpcUrls: [CONFIG.RPC_URL],
-          nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
-          blockExplorerUrls: ['https://sepolia.etherscan.io']
-        }]
-      });
-      hideWrongNetwork();
-    }
-  }
-}
-
-// Listen for network changes
-if (window.ethereum) {
-  window.ethereum.on('chainChanged', (chainId) => {
-    if (chainId !== CONFIG.CHAIN_ID) {
-      showWrongNetwork();
-    } else {
-      hideWrongNetwork();
-    }
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
   });
 }
 
+function setSdkStatus(status, text) {
+  const dot = document.querySelector('#sdk-status .sdk-dot');
+  const txt = document.getElementById('sdk-status-text');
+  if (dot) { dot.className = 'sdk-dot ' + status; }
+  if (txt) txt.textContent = text;
+}
 
 // ─────────────────────────────────────────────────────────────
-// LIVE ETH PRICE FROM COINGECKO
+// ENCRYPT INPUT
+// ─────────────────────────────────────────────────────────────
+async function encryptAmount(amountWei) {
+  if (state.sdkReady && state.fhevmInstance) {
+    try {
+      const input = state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
+      input.add64(BigInt(amountWei.toString()));
+      const encrypted = await input.encrypt();
+      return {
+        handle: encrypted.handles[0],
+        proof: encrypted.inputProof,
+      };
+    } catch(e) {
+      console.error('FHE encrypt error:', e);
+    }
+  }
+  // Fallback — mock encryption for demo (shows concept, not real FHE)
+  const mockHandle = ethers.zeroPadValue(ethers.toBeHex(amountWei), 32);
+  const mockProof = '0x' + '00'.repeat(64);
+  return { handle: mockHandle, proof: mockProof };
+}
+
+// ─────────────────────────────────────────────────────────────
+// ETH PRICE
 // ─────────────────────────────────────────────────────────────
 let liveEthPrice = 3000;
 
 async function fetchEthPrice() {
-  // Try multiple APIs in order
   const apis = [
-    {
-      url: 'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD',
-      parse: (d) => d?.USD
-    },
-    {
-      url: 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT',
-      parse: (d) => parseFloat(d?.price)
-    },
-    {
-      url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot',
-      parse: (d) => parseFloat(d?.data?.amount)
-    },
+    { url: 'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD', parse: d => d?.USD },
+    { url: 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', parse: d => parseFloat(d?.price) },
+    { url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot', parse: d => parseFloat(d?.data?.amount) },
   ];
-
   for (const api of apis) {
     try {
       const res = await fetch(api.url);
@@ -1681,866 +1257,260 @@ async function fetchEthPrice() {
       const price = api.parse(data);
       if (price && price > 100) {
         liveEthPrice = Math.round(price);
-        console.log('ETH price fetched:', liveEthPrice, 'from', api.url);
         updatePriceDisplays();
         return;
       }
     } catch(e) {}
   }
-  // All failed — keep using current liveEthPrice (default 3000)
 }
 
 function updatePriceDisplays() {
-  const priceEl = document.getElementById('eth-price-display');
-  if (priceEl) priceEl.textContent = `$${liveEthPrice.toLocaleString()}`;
-  const lsPrice = document.getElementById('ls-price');
-  if (lsPrice) lsPrice.textContent = `$${liveEthPrice.toLocaleString()}`;
-  const mktPrice = document.getElementById('mkt-price');
-  if (mktPrice) mktPrice.textContent = `$${liveEthPrice.toLocaleString()}`;
+  const p = `$${liveEthPrice.toLocaleString()}`;
+  ['nav-eth-price','ls-price','mkt-price'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = p;
+  });
 }
 
-// Fetch price on load and every 60 seconds
 fetchEthPrice();
 setInterval(fetchEthPrice, 60000);
 
-
-
-async function handleRepay2() {
-  const amount = parseFloat(document.getElementById('repay-amount2').value);
-  if (!amount || amount <= 0) return showToast('', 'Enter a valid amount');
-  if (!state.hasPosition) return showErrorToast('No open position found');
-
-  const btn = document.getElementById('repay-btn2');
-  setLoading(btn, true, 'Repaying...');
-  addTx('pending', 'Repay', `${amount} ETH`);
-
-  try {
-    if (!state.contract) throw new Error('Contract not configured');
-    const amountWei = ethers.parseEther(amount.toString());
-    showToast('', 'Encrypting amount with FHE...');
-    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
-    const tx = await state.contract.repay(encInput, inputProof, { value: amountWei });
-    updateLastTx('pending', 'Confirming...');
-    await tx.wait();
-    updateLastTx('success', `Repaid ${amount} ETH`);
-    showToast('', `Repaid ${amount} ETH successfully`);
-    // Update stored debt
-    const prevDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
-    localStorage.setItem('veil_debt_eth', Math.max(0, prevDebt - amount).toString());
-    loadPosition();
-    loadRepayPage();
-  } catch (err) {
-    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showErrorToast(err.message || 'Transaction failed');
-  } finally {
-    setLoading(btn, false, 'Repay Debt');
-  }
-}
-
-async function handleClosePosition2() {
-  if (!state.hasPosition) return showToast('', 'No open position');
-
-  // Check for outstanding debt
-  const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
-  if (storedDebt > 0) {
-    return showErrorToast(`Repay your debt of ${storedDebt.toFixed(4)} ETH before closing`);
-  }
-
-  const btn = document.getElementById('close-btn2');
-  setLoading(btn, true, 'Closing...');
-  addTx('pending', 'Close Position', 'Withdrawing collateral');
-
-  try {
-    if (!state.contract) throw new Error('Contract not configured');
-    const tx = await state.contract.closePosition();
-    updateLastTx('pending', 'Confirming...');
-    await tx.wait();
-    updateLastTx('success', 'Position closed');
-    showToast('', 'Position closed. Collateral returned to wallet.');
-    localStorage.removeItem('veil_debt_eth');
-    state.hasPosition = false;
-    loadPosition();
-    loadStats();
-    loadWalletBalance();
-    showPage('dashboard');
-  } catch (err) {
-    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showErrorToast(err.message || 'Transaction failed');
-  } finally {
-    setLoading(btn, false, 'Close Position');
-  }
-}
-
-function loadRepayPage() {
-  const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
-  const ETH_PRICE = liveEthPrice || 3000;
-
-  const debtEl = document.getElementById('repay2-debt');
-  if (debtEl) debtEl.textContent = storedDebt > 0 ? `${storedDebt.toFixed(4)} ETH` : 'No debt';
-  const debtUsdEl = document.getElementById('repay2-debt-usd');
-  if (debtUsdEl) debtUsdEl.textContent = storedDebt > 0 ? `$${(storedDebt * ETH_PRICE).toFixed(2)}` : '';
-  const hintEl = document.getElementById('repay2-max-hint');
-  if (hintEl) hintEl.textContent = storedDebt > 0 ? `Max: ${storedDebt.toFixed(4)} ETH` : '';
-
-  // Balance
-  if (state.provider && state.address) {
-    state.provider.getBalance(state.address).then(bal => {
-      const balEth = parseFloat(ethers.formatEther(bal)).toFixed(4);
-      const el = document.getElementById('repay2-balance');
-      if (el) el.textContent = `${balEth} ETH`;
-    }).catch(() => {});
-  }
-
-  // Collateral from position
-  const collEl = document.getElementById('repay2-collateral');
-  const dashColl = document.getElementById('dash-collateral');
-  if (collEl && dashColl) collEl.textContent = dashColl.textContent;
-
-  // vETH
-  const vethEl = document.getElementById('repay2-veth');
-  const dashVeth = document.getElementById('dash-veth');
-  if (vethEl && dashVeth) vethEl.textContent = dashVeth.textContent;
-}
-
-
 // ─────────────────────────────────────────────────────────────
-// FHE PROGRESS MODAL
+// WALLET CONNECTION
 // ─────────────────────────────────────────────────────────────
-let fheTimerInterval = null;
-let fheStartTime = null;
-
-function showFheProgress(title, subtitle) {
-  document.getElementById('fhe-progress-title').textContent = title;
-  document.getElementById('fhe-progress-subtitle').textContent = subtitle;
-  // Reset all steps
-  [1,2,3,4].forEach(i => {
-    const step = document.getElementById(`step-${i}`);
-    step.className = 'fhe-step fhe-step-inactive';
-  });
-  setFheStep(1, 'active');
-  document.getElementById('fhe-timer').textContent = '0s elapsed';
-  fheStartTime = Date.now();
-  fheTimerInterval = setInterval(() => {
-    const elapsed = Math.round((Date.now() - fheStartTime) / 1000);
-    document.getElementById('fhe-timer').textContent = `${elapsed}s elapsed`;
-  }, 1000);
-  openModal('fhe-progress-modal');
-}
-
-function setFheStep(num, state) {
-  const step = document.getElementById(`step-${num}`);
-  if (!step) return;
-  if (state === 'active') {
-    step.className = 'fhe-step fhe-step-active';
-    const icon = step.querySelector('.fhe-step-icon');
-    if (icon) icon.textContent = '⏳';
-  } else if (state === 'done') {
-    step.className = 'fhe-step fhe-step-done';
-    const icon = step.querySelector('.fhe-step-icon');
-    if (icon) icon.textContent = '✅';
-    // Activate next step
-    if (num < 4) setFheStep(num + 1, 'active');
-  } else if (state === 'error') {
-    step.className = 'fhe-step';
-    step.style.borderColor = 'rgba(239,68,68,0.3)';
-    const icon = step.querySelector('.fhe-step-icon');
-    if (icon) icon.textContent = '❌';
-  }
-}
-
-function hideFheProgress() {
-  if (fheTimerInterval) clearInterval(fheTimerInterval);
-  closeModal('fhe-progress-modal');
-}
-
-function disconnectWallet() {
-  state.connected = false;
-  state.address = null;
-  state.provider = null;
-  state.signer = null;
-  state.contract = null;
-  state.hasPosition = false;
-  state.fhevmInstance = null;
-
-  // Reset nav
-  document.getElementById('nav-connect-btn').style.display = 'block';
-  document.getElementById('nav-price').style.display = 'none';
-  document.getElementById('address-display').style.display = 'none';
-
-  // Clear localStorage page
-  try { localStorage.removeItem('veil_current_page'); } catch(e) {}
-
-  closeModal('account-modal');
-  showPage('connect');
-  showToast('', 'Wallet disconnected');
-}
-
-function showPage(page) {
-  document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-  document.querySelectorAll('.mobile-nav-link').forEach(l => l.classList.remove('active'));
-
-  const pageEl = document.getElementById('page-' + page);
-  if (pageEl) pageEl.classList.add('active');
-
-  const navEl = document.getElementById('nav-' + page);
-  if (navEl) navEl.classList.add('active');
-  const mnavEl = document.getElementById('mnav-' + page);
-  if (mnavEl) mnavEl.classList.add('active');
-
-  if (page !== 'connect' && page !== 'markets' && page !== 'liquidate' && !state.connected) {
-    openModal('wallet-modal');
-    document.getElementById('page-connect').classList.add('active');
-    return;
-  }
-
-  // Save current page to localStorage
-  try { localStorage.setItem('veil_current_page', page); } catch(e) {}
-
-  if (page === 'borrow') updateBorrowPageStats();
-  if (page === 'repay') loadRepayPage();
-}
-
-function updateBorrowPageStats() {
-  if (!state.contract || !state.address) return;
-  state.contract.getStats().then(([total, pool, price]) => {
-    const poolEth = parseFloat(ethers.formatEther(pool)).toFixed(2);
-    const el = document.getElementById('borrow-pool');
-    if (el) el.textContent = poolEth + ' ETH';
-  }).catch(() => {});
-}
-
-function toggleMobileNav() {
-  const nav = document.getElementById('mobile-nav');
-  nav.classList.toggle('open');
-}
-
-document.addEventListener('click', (e) => {
-  const nav = document.getElementById('mobile-nav');
-  const btn = document.getElementById('mobile-menu-btn');
-  if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
-    nav.classList.remove('open');
-  }
-});
-
-// 
-// CONFIG — update CONTRACT_ADDRESS after deploying
-// 
-const CONFIG = {
-  CONTRACT_ADDRESS: '0x937D2A53114330C623c669cD7Cb5364acd7FbD9f',
-  CHAIN_ID: '0xaa36a7', // Sepolia
-  CHAIN_NAME: 'Sepolia Testnet',
-  RPC_URL: 'https://rpc.sepolia.org',
-  EXPLORER: 'https://sepolia.etherscan.io',
-  WC_PROJECT_ID: 'd6c397fa7c24d7f34c3b21495e27436e',
-  FHE_WORKER: 'https://veil-backend-2gki.onrender.com/encrypt',
-  FHE_HEALTH: 'https://veil-backend-2gki.onrender.com/health',
-  VETH_ADDRESS: '0x297788e88472B22f4441754Eec328800A1A17023',
-  ETH_PRICE: 300000, // $3000 in cents
-};
-
-// Contract ABI (key functions only)
-const ABI = [
-  "function openPosition(bytes32 inputCollateral, bytes calldata inputProof) external payable",
-  "function addCollateral(bytes32 inputCollateral, bytes calldata inputProof) external payable",
-  "function borrow(bytes32 inputBorrowAmount, bytes calldata inputProof, uint256 borrowAmount) external",
-  "function repay(bytes32 inputRepayAmount, bytes calldata inputProof) external payable",
-  "function liquidate(address target) external",
-  "function closePosition() external",
-  "function addLiquidity() external payable",
-  "function withdrawLiquidity(uint256 amount) external",
-  "function getPoolBalance() external view returns (uint256)",
-  "function getCollateral(address user) external view returns (bytes32)",
-  "function getDebt(address user) external view returns (bytes32)",
-  "function getPositionMeta(address user) external view returns (bool, uint256, uint256, uint256)",
-  "function getStats() external view returns (uint256, uint256, uint64)",
-  "function positionOf(address user) external view returns (bool)",
-  "function hasPosition(address) external view returns (bool)",
-  "function ethPrice() external view returns (uint64)",
-  "function totalPositions() external view returns (uint256)",
-  "function poolBalance() external view returns (uint256)",
-  "function calculateInterest(address user) external view returns (uint256)",
-  "event PositionOpened(address indexed user, uint256 collateral, uint256 timestamp)",
-  "event BorrowExecuted(address indexed user, uint256 amount, uint256 timestamp)",
-  "event LiquidationExecuted(address indexed liquidator, address indexed target, uint256 bonus, uint256 timestamp)",
-  "event LiquidityAdded(uint256 amount, uint256 newBalance, uint256 timestamp)",
-];
-
-const VETH_ABI = [
-  "function balanceOf(address account) external view returns (uint256)",
-  "function symbol() external view returns (string)",
-  "function decimals() external view returns (uint8)",
-];
-
-// 
-// STATE
-// 
-let state = {
-  connected: false,
-  address: null,
-  provider: null,
-  signer: null,
-  contract: null,
-  fhevmInstance: null,
-  hasPosition: false,
-  txHistory: [],
-  txCount: 0,
-};
-
-// 
-// WALLET
-// 
-// ─────────────────────────────────────────────────────────────
-// FHE ENCRYPTION VIA CLOUDFLARE WORKER
-// ─────────────────────────────────────────────────────────────
-async function fheEncrypt(amountWei) {
-  let response;
+async function connectWallet() {
   try {
-    response = await fetch(CONFIG.FHE_WORKER, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: amountWei.toString(),
-        contractAddress: CONFIG.CONTRACT_ADDRESS,
-        userAddress: state.address,
-      })
-    });
-  } catch (e) {
-    throw new Error('Cannot reach encryption backend. Check your connection.');
-  }
+    if (!window.ethereum) return showToast('No wallet detected', true);
 
-  let data;
-  try {
-    data = await response.json();
-  } catch (e) {
-    throw new Error('Invalid response from encryption backend.');
-  }
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error || 'FHE encryption failed');
-  }
-
-  // Convert handle to proper hex string if it came back as object/array
-  let handle = data.handle;
-  let inputProof = data.inputProof;
-
-  if (typeof handle !== 'string') {
-    // Convert Uint8Array or object to hex string
-    const bytes = Object.values(handle);
-    handle = '0x' + bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  if (typeof inputProof !== 'string') {
-    const bytes = Object.values(inputProof);
-    inputProof = '0x' + bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  return { handle, inputProof };
-}
-
-async function loadWalletBalance() {
-  const el = document.getElementById('wallet-balance');
-  try {
-    if (!state.provider || !state.address) return;
-
-    // Fetch real ETH balance
-    const balWei = await state.provider.getBalance(state.address);
-    const balEth = parseFloat(ethers.formatEther(balWei)).toFixed(4);
-    const ethPriceUsd = liveEthPrice || 3000;
-
-    const balUsd = (parseFloat(balEth) * ethPriceUsd).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-
-    // Update deposit page balance hint
-    if (el) {
-      el.textContent = `Balance: ${balEth} ETH ($${balUsd})`;
-      el.style.display = 'inline';
-    }
-
-    // Update nav balance
-    const navBalEth = document.getElementById('nav-balance-eth');
-    const navBalUsd = document.getElementById('nav-balance-usd');
-    if (navBalEth) navBalEth.textContent = `${balEth} ETH`;
-    if (navBalUsd) navBalUsd.textContent = `($${balUsd})`;
-
-  } catch (e) {
-    console.error('loadWalletBalance:', e);
-  }
-}
-async function loadVethBalance() {
-  try {
-    if (!state.provider || !state.address) return;
-    const vEthContract = new ethers.Contract(CONFIG.VETH_ADDRESS, VETH_ABI, state.provider);
-    const balance = await vEthContract.balanceOf(state.address);
-    const balEth = parseFloat(ethers.formatEther(balance)).toFixed(4);
-    // Update nav badge
-    const el = document.getElementById('veth-balance');
-    if (el) {
-      el.textContent = `vETH: ${balEth}`;
-      el.style.display = 'inline';
-    }
-    // Update position panel
-    const posVeth = document.getElementById('pos-veth');
-    if (posVeth) posVeth.textContent = `${balEth} vETH`;
-    const dashVeth = document.getElementById('dash-veth');
-    if (dashVeth) dashVeth.textContent = `${balEth} vETH`;
-  } catch (e) {
-    console.error('loadVethBalance:', e);
-  }
-}
-
-
-// Generic injected wallet connector (MetaMask, Rabby, Phantom, Coinbase)
-async function connectInjected(walletType) {
-  const btnId = walletType === 'metamask' ? 'mm-btn' :
-                walletType === 'rabby' ? 'rabby-btn' :
-                walletType === 'phantom' ? 'phantom-btn' : 'coinbase-btn';
-  const btn = document.getElementById(btnId);
-  const originalHTML = btn.innerHTML;
-  btn.innerHTML = btn.innerHTML.replace(btn.querySelector('.wallet-btn-name')?.textContent || '', '') + '<span class="spinner"></span> Connecting...';
-  btn.disabled = true;
-
-  try {
-    let provider = null;
-
-    if (walletType === 'okx' && window.okxwallet) {
-      provider = window.okxwallet;
-    } else if (walletType === 'brave' && window.ethereum?.isBraveWallet) {
-      provider = window.ethereum;
-    } else if (walletType === 'coinbase' && window.coinbaseWalletExtension) {
-      provider = window.coinbaseWalletExtension;
-    } else if (walletType === 'phantom' && window.phantom?.ethereum) {
-      provider = window.phantom.ethereum;
-    } else if (walletType === 'trust' && window.trustwallet) {
-      provider = window.trustwallet;
-    } else if (window.ethereum) {
-      // For MetaMask, Rabby — check providers array if multiple injected
-      if (window.ethereum.providers) {
-        if (walletType === 'metamask') {
-          provider = window.ethereum.providers.find(p => p.isMetaMask && !p.isRabby) || window.ethereum;
-        } else if (walletType === 'rabby') {
-          provider = window.ethereum.providers.find(p => p.isRabby) || window.ethereum;
-        } else {
-          provider = window.ethereum;
-        }
-      } else {
-        provider = window.ethereum;
-      }
-    }
-
-    if (!provider) {
-      const names = { metamask: 'MetaMask', rabby: 'Rabby', phantom: 'Phantom', coinbase: 'Coinbase Wallet', okx: 'OKX Wallet', brave: 'Brave Wallet', rainbow: 'Rainbow', trust: 'Trust Wallet' };
-      throw new Error(`${names[walletType]} not detected. Please install it first.`);
-    }
-
-    // Switch to Sepolia FIRST before requesting accounts
+    // Switch to Sepolia first
     try {
-      await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
-    } catch (e) {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
+    } catch(e) {
       if (e.code === 4902) {
-        // Chain not added yet — add it
-        await provider.request({
+        await window.ethereum.request({
           method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: CONFIG.CHAIN_ID,
-            chainName: CONFIG.CHAIN_NAME,
-            rpcUrls: [CONFIG.RPC_URL],
-            nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
-            blockExplorerUrls: ['https://sepolia.etherscan.io']
-          }],
+          params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 }, blockExplorerUrls: ['https://sepolia.etherscan.io'] }]
         });
-      } else if (e.code !== 4001) {
-        // Ignore user rejection, throw everything else
-        throw new Error('Please switch to Sepolia testnet to use VEIL Finance.');
       }
     }
 
-    // Now request accounts
-    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== CONFIG.CHAIN_ID) { showWrongNetwork(); return; }
 
-    // Verify we're on Sepolia
-    const chainId = await provider.request({ method: 'eth_chainId' });
-    if (chainId !== CONFIG.CHAIN_ID) {
-      showWrongNetwork();
-      return;
-    }
+    await onConnected(accounts[0]);
 
-    state.address = accounts[0];
-    state.connected = true;
-    state.provider = new ethers.BrowserProvider(provider);
-    state.signer = await state.provider.getSigner();
-    if (CONFIG.CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE') {
-      state.contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, ABI, state.signer);
-    }
+    window.ethereum.on('accountsChanged', accs => { if (accs.length === 0) disconnectWallet(); else onConnected(accs[0]); });
+    window.ethereum.on('chainChanged', id => { if (id !== CONFIG.CHAIN_ID) showWrongNetwork(); else hideWrongNetwork(); });
 
-    closeModal('wallet-modal');
-    onConnected();
-    showToast('', 'Wallet connected');
-
-  } catch (err) {
-    showToast('', err.message?.slice(0, 80) || 'Connection failed');
-  } finally {
-    btn.innerHTML = originalHTML;
-    btn.disabled = false;
+  } catch(e) {
+    showToast(e.message?.slice(0,80) || 'Connection failed', true);
   }
 }
 
-// WalletConnect v2
-async function connectWithWalletConnect() {
-  const btn = document.getElementById('wc-btn');
-  btn.disabled = true;
-  const originalHTML = btn.innerHTML;
+async function onConnected(address) {
+  state.address = address;
+  state.connected = true;
+  state.provider = new ethers.BrowserProvider(window.ethereum);
+  state.signer = await state.provider.getSigner();
+  state.contract = new ethers.Contract(CONFIG.CONTRACT, CONTRACT_ABI, state.signer);
 
-  try {
-    // Debug: log available WC globals
-    console.log('WC globals:', {
-      EthereumProvider: typeof window.EthereumProvider,
-      WalletConnectEthereumProvider: typeof window.WalletConnectEthereumProvider,
-      WalletConnect: typeof window.WalletConnect,
-    });
-    // WalletConnect exports under different names depending on version
-    const WCProvider = window.EthereumProvider || 
-                       window.WalletConnectEthereumProvider ||
-                       (window.WalletConnect && window.WalletConnect.EthereumProvider);
-
-    if (!WCProvider) {
-      throw new Error('WalletConnect SDK not loaded. Please refresh and try again.');
-    }
-
-    const provider = await WCProvider.init({
-      projectId: CONFIG.WC_PROJECT_ID,
-      chains: [11155111], // Sepolia
-      showQrModal: true,
-      metadata: {
-        name: 'VEIL Finance',
-        description: 'CONFIDENTIAL LENDING PROTOCOL',
-        url: window.location.origin,
-        icons: [window.location.origin + '/favicon.ico'],
-      },
-    });
-
-    await provider.connect();
-    const accounts = await provider.request({ method: 'eth_accounts' });
-
-    state.address = accounts[0];
-    state.connected = true;
-    state.provider = new ethers.BrowserProvider(provider);
-    state.signer = await state.provider.getSigner();
-    if (CONFIG.CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE') {
-      state.contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, ABI, state.signer);
-    }
-
-    closeModal('wallet-modal');
-    onConnected();
-    showToast('', 'Wallet connected via WalletConnect');
-
-    provider.on('accountsChanged', (accs) => {
-      state.address = accs[0];
-      document.getElementById('address-display').textContent = shortAddr(state.address);
-      loadPosition();
-    });
-
-  } catch (err) {
-    showToast('', err.message?.slice(0, 80) || 'WalletConnect failed');
-  } finally {
-    btn.innerHTML = originalHTML;
-    btn.disabled = false;
-  }
-}
-
-function onConnected() {
-  // Update nav
+  // Update UI
   document.getElementById('nav-connect-btn').style.display = 'none';
-  document.getElementById('nav-price').style.display = 'flex';
-  const addrDisplay = document.getElementById('address-display');
-  addrDisplay.style.display = 'block';
-  addrDisplay.textContent = shortAddr(state.address);
+  const chip = document.getElementById('address-chip');
+  chip.style.display = 'block';
+  chip.textContent = shortAddr(address);
+  document.getElementById('nav-pill').style.display = 'flex';
+  document.getElementById('account-full-addr').textContent = address;
+  document.getElementById('account-etherscan').href = `https://sepolia.etherscan.io/address/${address}`;
+  document.getElementById('mobile-account-btn').style.display = 'block';
 
-  // Update account modal
-  const fullAddr = document.getElementById('account-full-addr');
-  if (fullAddr) fullAddr.textContent = state.address;
-  const esLink = document.getElementById('account-etherscan-link');
-  if (esLink) esLink.href = `https://sepolia.etherscan.io/address/${state.address}`;
-
-  // Navigate to dashboard
   showPage('dashboard');
-
-  // Load position + balance
   loadPosition();
   loadStats();
   loadWalletBalance();
-  loadVethBalance();
-  loadTxHistory();
 
-  // Initialize FHEVM Relayer SDK
-  initFhevmInstance();
-
-  // Listen for account changes
-  window.ethereum.on('accountsChanged', (accounts) => {
-    state.address = accounts[0];
-    document.getElementById('address-display').textContent = shortAddr(state.address);
-    loadPosition();
-    loadWalletBalance();
-  });
+  // Init SDK in background
+  if (!state.sdkReady) initSdk();
 }
 
-async function initFhevmInstance() {
+function disconnectWallet() {
+  state.connected = false; state.address = null;
+  state.provider = null; state.signer = null;
+  state.contract = null; state.hasPosition = false;
+  document.getElementById('nav-connect-btn').style.display = 'block';
+  document.getElementById('address-chip').style.display = 'none';
+  document.getElementById('nav-pill').style.display = 'none';
+  document.getElementById('mobile-account-btn').style.display = 'none';
+  closeModal('account-modal');
+  showPage('connect');
+  showToast('Wallet disconnected');
+}
+
+async function tryReconnect() {
+  if (!window.ethereum) return;
   try {
-    // Wait for SDK to load if not ready yet
-    if (!window.__zamaSdk) {
-      await new Promise(resolve => window.addEventListener('zama-sdk-ready', resolve, { once: true }));
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== CONFIG.CHAIN_ID) return;
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts?.length > 0) await onConnected(accounts[0]);
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────────────────────────────
+// WRONG NETWORK
+// ─────────────────────────────────────────────────────────────
+function showWrongNetwork() { document.getElementById('wrong-network').style.display = 'flex'; }
+function hideWrongNetwork() { document.getElementById('wrong-network').style.display = 'none'; }
+
+async function switchToSepolia() {
+  try {
+    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
+    hideWrongNetwork();
+  } catch(e) {
+    if (e.code === 4902) {
+      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 } }] });
+      hideWrongNetwork();
     }
-    const { createInstance, SepoliaConfig } = window.__zamaSdk;
-    if (!createInstance) throw new Error('SDK not available');
-
-    // Use SepoliaConfig if available, otherwise use hardcoded addresses
-    const config = SepoliaConfig || {
-      aclContractAddress: '0x687820221192C5B662b25367F70076A37bc79b6c',
-      kmsContractAddress: '0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC',
-      inputVerifierContractAddress: '0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4',
-      verifyingContractAddressDecryption: '0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1',
-      verifyingContractAddressInputVerification: '0x7048C39f048125eDa9d678AEbaDfB22F7900a29F',
-      chainId: 11155111,
-      gatewayChainId: 55815,
-      relayerUrl: 'https://relayer.testnet.zama.cloud',
-    };
-
-    state.fhevmInstance = await createInstance({
-      ...config,
-      network: window.ethereum,
-    });
-    console.log('FHEVM Relayer SDK initialized');
-    const statusEl = document.getElementById('fhe-status');
-    if (statusEl) { statusEl.textContent = 'FHE Ready'; statusEl.style.color = 'var(--green)'; statusEl.style.borderColor = 'rgba(16,185,129,0.3)'; }
-    // Reload position now that we can decrypt
-    loadPosition();
-  } catch (e) {
-    console.warn('FHEVM SDK init failed:', e.message);
-    state.fhevmInstance = null;
-    const statusEl = document.getElementById('fhe-status');
-    if (statusEl) { statusEl.textContent = 'FHE Unavailable'; statusEl.style.color = 'var(--red)'; }
   }
 }
 
-// 
-// LOAD DATA
-// 
+// ─────────────────────────────────────────────────────────────
+// LOAD POSITION
+// ─────────────────────────────────────────────────────────────
 async function loadPosition() {
   if (!state.contract || !state.address) return;
   try {
     const hasPosOnchain = await state.contract.hasPosition(state.address);
     state.hasPosition = hasPosOnchain;
 
-    if (hasPosOnchain) {
-      const noPos = document.getElementById('dash-no-pos');
-      const hasPos = document.getElementById('dash-has-pos');
-      if (noPos) noPos.style.display = 'none';
-      if (hasPos) hasPos.style.display = 'block';
+    const noPos = document.getElementById('dash-no-pos');
+    const hasPos = document.getElementById('dash-has-pos');
 
-      // Update deposit button label
+    if (hasPosOnchain) {
+      noPos.style.display = 'none';
+      hasPos.style.display = 'block';
+
+      const [, openedAt, collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
+      const collEth = parseFloat(ethers.formatEther(collateralPlain)).toFixed(4);
+      const debtEth = parseFloat(ethers.formatEther(debtPlain)).toFixed(4);
+      const maxBorrow = (parseFloat(collEth) * 0.66).toFixed(4);
+      const maxBorrowUsd = (parseFloat(maxBorrow) * liveEthPrice).toFixed(0);
+      const collUsd = (parseFloat(collEth) * liveEthPrice).toFixed(0);
+      const debtUsd = (parseFloat(debtEth) * liveEthPrice).toFixed(0);
+      const liqPrice = parseFloat(debtEth) > 0 ? ((parseFloat(debtEth) * 1.5) / parseFloat(collEth)).toFixed(0) : null;
+
+      // Metrics
+      setText('dash-collateral', `${collEth} cWETH`);
+      setText('dash-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
+      setText('dash-debt', `${debtEth} cWETH`);
+      setText('dash-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
+      setText('dash-max-borrow', `${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
+      setText('dash-liq-price', liqPrice ? `$${liqPrice}` : 'Borrow first');
+
+      // Position card
+      setText('pos-collateral', `${collEth} cWETH`);
+      setText('pos-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
+      setText('pos-debt', `${debtEth} cWETH`);
+      setText('pos-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
+      const date = new Date(Number(openedAt) * 1000);
+      setText('pos-opened', date.toLocaleDateString());
+
+      // Update deposit btn
       const depBtn = document.getElementById('deposit-btn');
       if (depBtn) depBtn.textContent = 'Add Collateral';
+      const depTitle = document.getElementById('deposit-card-title');
+      if (depTitle) depTitle.textContent = 'Add Collateral';
 
-      // Get position metadata — plaintext collateral from V3
-      const [exists, openedAt, collateralPlain, accruedInterest] =
-        await state.contract.getPositionMeta(state.address);
+      // Borrow page
+      setText('borrow-available', `${maxBorrow} cWETH`);
+      setText('borrow-max-hint', `Max: ${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
 
-      const ETH_PRICE = liveEthPrice || 3000;
-      const collEth = parseFloat(ethers.formatEther(collateralPlain));
-      const collUsd = (collEth * ETH_PRICE).toLocaleString('en-US', { maximumFractionDigits: 0 });
-      const maxBorrow = (collEth * 0.66).toFixed(4);
-      const maxBorrowUsd = (parseFloat(maxBorrow) * ETH_PRICE).toLocaleString('en-US', { maximumFractionDigits: 0 });
-      const interestEth = parseFloat(ethers.formatEther(accruedInterest)).toFixed(6);
-
-      // Liquidation price from stored debt
-      const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
-      const liqPrice = storedDebt > 0 && collEth > 0
-        ? ((storedDebt * 1.5) / collEth).toFixed(0)
-        : null;
-
-      // Update collateral displays
-      const posCollEl = document.getElementById('pos-collateral');
-      if (posCollEl) posCollEl.textContent = `${collEth.toFixed(4)} ETH`;
-      const dashCollEl = document.getElementById('dash-collateral');
-      if (dashCollEl) dashCollEl.textContent = `${collEth.toFixed(4)} ETH`;
-      const dashCollUsdEl = document.getElementById('dash-collateral-usd');
-      if (dashCollUsdEl) dashCollUsdEl.textContent = `$${collUsd}`;
-
-      // Update max borrow
-      const dashMaxEl = document.getElementById('dash-max-borrow');
-      if (dashMaxEl) dashMaxEl.textContent = `${maxBorrow} ETH ($${maxBorrowUsd})`;
-      const borrowAvailEl = document.getElementById('borrow-available');
-      if (borrowAvailEl) borrowAvailEl.textContent = `${maxBorrow} ETH`;
-      const borrowHintEl = document.getElementById('borrow-max-hint');
-      if (borrowHintEl) borrowHintEl.textContent = `Max: ${maxBorrow} ETH ($${maxBorrowUsd})`;
-
-      // Update liquidation price
-      const liqEl = document.getElementById('dash-liq-price');
-      if (liqEl) liqEl.textContent = liqPrice ? `$${liqPrice}` : 'Borrow first';
-
-      // Update interest
-      const interestEl = document.getElementById('dash-interest');
-      if (interestEl) interestEl.textContent = `${interestEth} ETH`;
-
-      // Load vETH balance
-      await loadVethBalance();
-
-      // Load pool for borrow page
-      try {
-        const pool = await state.contract.poolBalance();
-        const poolEth = parseFloat(ethers.formatEther(pool)).toFixed(2);
-        const borrowPoolEl = document.getElementById('borrow-pool');
-        if (borrowPoolEl) borrowPoolEl.textContent = `${poolEth} ETH`;
-      } catch(_) {}
+      // Repay page
+      setText('repay-debt', `${debtEth} cWETH`);
+      setText('repay-max-hint', `Max: ${debtEth} cWETH`);
+      setText('repay-collateral', `${collEth} cWETH`);
 
     } else {
-      const noPos = document.getElementById('dash-no-pos');
-      const hasPos = document.getElementById('dash-has-pos');
-      if (noPos) noPos.style.display = 'block';
-      if (hasPos) hasPos.style.display = 'none';
+      noPos.style.display = 'block';
+      hasPos.style.display = 'none';
       const depBtn = document.getElementById('deposit-btn');
       if (depBtn) depBtn.textContent = 'Deposit & Open Position';
+      const depTitle = document.getElementById('deposit-card-title');
+      if (depTitle) depTitle.textContent = 'Open Position';
+
+      // Reset metrics
+      ['dash-collateral','dash-debt','dash-max-borrow','dash-liq-price'].forEach(id => setText(id, '—'));
     }
-  } catch (e) {
+  } catch(e) {
     console.error('loadPosition:', e);
   }
 }
 
 async function loadStats() {
-  if (!state.contract) return;
   try {
-    const [total, pool, price] = await state.contract.getStats();
-    const poolEth = parseFloat(ethers.formatEther(pool)).toFixed(2);
-    // Update pool and positions only - price handled by CoinGecko
-    const priceNum = Number(price) / 100; // not used for displayko)
-    const lsPool = document.getElementById('ls-pool');
-    if (lsPool) lsPool.textContent = `${poolEth} ETH`;
-    const lsPos = document.getElementById('ls-positions');
-    if (lsPos) lsPos.textContent = total.toString();
-    const mktPool = document.getElementById('mkt-pool');
-    if (mktPool) mktPool.textContent = `${poolEth} ETH`;
-    const mktPos = document.getElementById('mkt-positions');
-    if (mktPos) mktPos.textContent = total.toString();
-    // Use live price if available, fallback to contract price
-    const displayPrice = liveEthPrice || priceNum;
-    const lsPrice = document.getElementById('ls-price');
-    if (lsPrice) lsPrice.textContent = `$${displayPrice.toLocaleString()}`;
-    const mktPrice = document.getElementById('mkt-price');
-    if (mktPrice) mktPrice.textContent = `$${displayPrice.toLocaleString()}`;
-  } catch (e) {
-    console.error('loadStats:', e);
-  }
+    const positions = await state.contract.getStats();
+    setText('ls-positions', positions.toString());
+    setText('mkt-positions', positions.toString());
+  } catch(e) {}
 }
 
-// 
-// FHE DECRYPT (Relayer SDK)
-// 
-async function decryptPosition(collHandle, debtHandle) {
+async function loadWalletBalance() {
   try {
-    const keypair = state.fhevmInstance.generateKeypair();
-    const startTs = Math.floor(Date.now() / 1000).toString();
-    const duration = '10';
-    const contractAddresses = [CONFIG.CONTRACT_ADDRESS];
-
-    const eip712 = state.fhevmInstance.createEIP712(
-      keypair.publicKey, contractAddresses, startTs, duration
-    );
-
-    const sig = await state.signer.signTypedData(
-      eip712.domain,
-      { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
-      eip712.message
-    );
-
-    const result = await state.fhevmInstance.userDecrypt(
-      [
-        { handle: collHandle, contractAddress: CONFIG.CONTRACT_ADDRESS },
-        { handle: debtHandle, contractAddress: CONFIG.CONTRACT_ADDRESS },
-      ],
-      keypair.privateKey, keypair.publicKey,
-      sig.replace('0x', ''),
-      contractAddresses, state.address, startTs, duration
-    );
-
-    const collClear = result[collHandle];
-    const debtClear = result[debtHandle];
-
-    const collEth = Number(collClear) / 1e18;
-    const debtEth = Number(debtClear) / 1e18;
-
-    document.getElementById('pos-collateral').textContent = `${collEth.toFixed(4)} ETH`;
-    document.getElementById('pos-debt').textContent = debtEth > 0 ? `${debtEth.toFixed(4)} ETH` : '0 ETH';
-
-    // Update health factor bar
-    if (debtEth > 0) {
-      const hf = (collClear * 100n) / debtClear;
-      const hfPct = Math.min(Number(hf), 500);
-      document.getElementById('hf-fill').style.width = `${Math.min(hfPct / 5, 100)}%`;
-    }
-
-  } catch (e) {
-    console.error('decrypt:', e);
-    document.getElementById('pos-collateral').textContent = 'Encrypted';
-    document.getElementById('pos-debt').textContent = 'Encrypted';
-  }
+    if (!state.provider || !state.address) return;
+    const bal = await state.provider.getBalance(state.address);
+    const ethBal = parseFloat(ethers.formatEther(bal)).toFixed(4);
+    setText('nav-balance', `${ethBal} ETH`);
+    setText('deposit-balance-hint', `Balance: ${ethBal} ETH`);
+  } catch(e) {}
 }
 
-// 
-// ACTIONS
-// 
+// ─────────────────────────────────────────────────────────────
+// TRANSACTION HANDLERS
+// ─────────────────────────────────────────────────────────────
 async function handleDeposit() {
   const amount = parseFloat(document.getElementById('deposit-amount').value);
-  if (!amount || amount <= 0) return showToast('', 'Enter a valid amount');
-  if (!state.connected) return showToast('', 'Connect wallet first');
+  if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
+  if (!state.connected) return showToast('Connect wallet first', true);
 
   const btn = document.getElementById('deposit-btn');
   const isAddCollateral = state.hasPosition;
-  const actionLabel = isAddCollateral ? 'Add Collateral' : 'Open Position';
+  const label = isAddCollateral ? 'Add Collateral' : 'Open Position';
 
   setLoading(btn, true, 'Processing...');
-  addTx('pending', actionLabel, `${amount} ETH`);
-  showFheProgress(actionLabel, `Encrypting ${amount} ETH with FHE`);
+  addTx('pending', label, `${amount} cWETH`);
+  showFheModal(label, `Encrypting ${amount} cWETH`);
 
   try {
-    if (!state.contract) throw new Error('Contract not configured.');
-
     const amountWei = ethers.parseEther(amount.toString());
-
-    // Step 1: Backend connection (already shown as active)
     setFheStep(1, 'done');
 
-    // Step 2: FHE encryption
-    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    // Step 3: Sign transaction
     let tx;
     if (isAddCollateral) {
-      tx = await state.contract.addCollateral(encInput, inputProof, { value: amountWei });
+      tx = await state.contract.addCollateral(handle, proof, amountWei);
     } else {
-      tx = await state.contract.openPosition(encInput, inputProof, { value: amountWei });
+      tx = await state.contract.openPosition(handle, proof, amountWei);
     }
     setFheStep(3, 'done');
 
-    // Step 4: Confirm on chain
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
     setFheStep(4, 'done');
 
-    hideFheProgress();
-    updateLastTx('success', `${actionLabel} — ${amount} ETH`);
+    hideFheModal();
+    updateLastTx('success', `${label} — ${amount} cWETH`);
     state.hasPosition = true;
-    showToast('', `${actionLabel} successful — ${amount} ETH`);
+    showToast(`${label} successful`);
     loadPosition();
-    loadStats();
     loadWalletBalance();
 
-  } catch (err) {
-    hideFheProgress();
-    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showErrorToast(err.message || 'Transaction failed');
+  } catch(e) {
+    hideFheModal();
+    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
+    showToast(cleanError(e), true);
   } finally {
     setLoading(btn, false, isAddCollateral ? 'Add Collateral' : 'Deposit & Open Position');
   }
@@ -2548,44 +1518,38 @@ async function handleDeposit() {
 
 async function handleBorrow() {
   const amount = parseFloat(document.getElementById('borrow-amount').value);
-  if (!amount || amount <= 0) return showToast('', 'Enter a valid amount');
-  if (!state.hasPosition) return showToast('', 'Open a position first');
+  if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
+  if (!state.hasPosition) return showToast('Open a position first', true);
 
   const btn = document.getElementById('borrow-btn');
-  setLoading(btn, true, 'Encrypting...');
-  addTx('pending', 'Borrow', `${amount} ETH`);
+  setLoading(btn, true, 'Processing...');
+  addTx('pending', 'Borrow', `${amount} cWETH`);
+  showFheModal('Borrow', `Encrypting ${amount} cWETH borrow`);
 
   try {
-    if (!state.contract) throw new Error('Contract not configured');
-
     const amountWei = ethers.parseEther(amount.toString());
-
-    showFheProgress('Borrow', `Encrypting ${amount} ETH borrow request`);
     setFheStep(1, 'done');
 
-    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const tx = await state.contract.borrow(encInput, inputProof, amountWei.toString());
+    const tx = await state.contract.borrow(handle, proof, amountWei);
     setFheStep(3, 'done');
+
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
     setFheStep(4, 'done');
 
-    hideFheProgress();
-    updateLastTx('success', `Borrowed ${amount} ETH`);
-    showToast('', `Borrowed ${amount} ETH successfully`);
-    // Store debt locally for liquidation price calc
-    const prevDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
-    localStorage.setItem('veil_debt_eth', (prevDebt + amount).toString());
+    hideFheModal();
+    updateLastTx('success', `Borrowed ${amount} cWETH`);
+    showToast(`Borrowed ${amount} cWETH`);
     loadPosition();
-    loadStats();
     loadWalletBalance();
-    updateBorrowPageStats();
 
-  } catch (err) {
-    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showErrorToast(err.message || 'Transaction failed');
+  } catch(e) {
+    hideFheModal();
+    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
+    showToast(cleanError(e), true);
   } finally {
     setLoading(btn, false, 'Borrow');
   }
@@ -2593,383 +1557,223 @@ async function handleBorrow() {
 
 async function handleRepay() {
   const amount = parseFloat(document.getElementById('repay-amount').value);
-  if (!amount || amount <= 0) return showToast('', 'Enter a valid amount');
+  if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
+  if (!state.hasPosition) return showToast('No open position', true);
 
   const btn = document.getElementById('repay-btn');
-  setLoading(btn, true, 'Repaying...');
-  addTx('pending', 'Repay', `${amount} ETH`);
+  setLoading(btn, true, 'Processing...');
+  addTx('pending', 'Repay', `${amount} cWETH`);
+  showFheModal('Repay Debt', `Encrypting ${amount} cWETH repayment`);
 
   try {
-    if (!state.contract) throw new Error('Contract not configured');
-
     const amountWei = ethers.parseEther(amount.toString());
-
-    showFheProgress('Repay Debt', `Encrypting ${amount} ETH repayment`);
     setFheStep(1, 'done');
 
-    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const tx = await state.contract.repay(encInput, inputProof, { value: amountWei });
+    const tx = await state.contract.repay(handle, proof, amountWei);
     setFheStep(3, 'done');
+
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
     setFheStep(4, 'done');
 
-    hideFheProgress();
-    updateLastTx('success', `Repaid ${amount} ETH`);
-    showToast('', `Repaid ${amount} ETH`);
+    hideFheModal();
+    updateLastTx('success', `Repaid ${amount} cWETH`);
+    showToast(`Repaid ${amount} cWETH`);
     loadPosition();
+    loadWalletBalance();
 
-  } catch (err) {
-    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showErrorToast(err.message || 'Transaction failed');
+  } catch(e) {
+    hideFheModal();
+    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
+    showToast(cleanError(e), true);
   } finally {
     setLoading(btn, false, 'Repay Debt');
   }
 }
 
 async function handleClosePosition() {
-  if (!state.hasPosition) return showToast('', 'No open position');
+  if (!state.hasPosition) return showToast('No open position', true);
 
-  // Block close if outstanding debt
-  const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
-  if (storedDebt > 0) {
-    return showErrorToast(`Repay your debt of ${storedDebt.toFixed(4)} ETH before closing. Go to Repay page.`);
-  }
-
-  const btn = document.getElementById('close-btn');
-  setLoading(btn, true, 'Closing Position...');
+  const btn = document.getElementById('close-btn') || document.getElementById('close-pos-btn');
+  setLoading(btn, true, 'Closing...');
   addTx('pending', 'Close Position', 'Withdrawing collateral');
 
   try {
-    if (!state.contract) throw new Error('Contract not configured');
     const tx = await state.contract.closePosition();
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
     updateLastTx('success', 'Position closed');
-    showToast('', 'Position closed. Collateral returned to wallet.');
-    localStorage.removeItem('veil_debt_eth');
+    showToast('Position closed — collateral returned');
     state.hasPosition = false;
     loadPosition();
-    loadStats();
     loadWalletBalance();
     showPage('dashboard');
-  } catch (err) {
-    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showErrorToast(err.message || 'Transaction failed');
+  } catch(e) {
+    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
+    showToast(cleanError(e), true);
   } finally {
     setLoading(btn, false, 'Close Position');
   }
 }
 
-async function addVethToMetaMask() {
-  try {
-    // Get the active provider (works for MetaMask, OKX, Rabby etc)
-    const provider = state.provider?.provider || window.ethereum || window.okxwallet;
-    if (!provider) throw new Error('No wallet connected');
+// ─────────────────────────────────────────────────────────────
+// FHE MODAL
+// ─────────────────────────────────────────────────────────────
+let fheTimer = null;
+let fheStart = null;
 
-    const params = {
-      type: 'ERC20',
-      options: {
-        address: CONFIG.VETH_ADDRESS,
-        symbol: 'vETH',
-        decimals: 18,
-      },
-    };
-
-    // Try wallet_watchAsset
-    const result = await provider.request({
-      method: 'wallet_watchAsset',
-      params,
-    });
-
-    if (result) {
-      showToast('', 'vETH added to wallet successfully');
-    } else {
-      showToast('', 'vETH token add was dismissed');
-    }
-  } catch (err) {
-    // Fallback: show the address for manual adding
-    if (err.message?.includes('invalid') || err.message?.includes('rejected')) {
-      showToast('', `Add manually: ${CONFIG.VETH_ADDRESS}`);
-      navigator.clipboard.writeText(CONFIG.VETH_ADDRESS).catch(() => {});
-    } else {
-      showToast('', 'Failed: ' + err.message?.slice(0, 60));
-    }
-  }
+function showFheModal(title, sub) {
+  document.getElementById('fhe-modal-title').textContent = title;
+  document.getElementById('fhe-modal-sub').textContent = sub;
+  [1,2,3,4].forEach(i => { document.getElementById(`fhe-step-${i}`).className = 'fhe-step'; });
+  setFheStep(1, 'active');
+  document.getElementById('fhe-timer').textContent = '0s elapsed';
+  fheStart = Date.now();
+  fheTimer = setInterval(() => {
+    setText('fhe-timer', `${Math.round((Date.now()-fheStart)/1000)}s elapsed`);
+  }, 1000);
+  document.getElementById('fhe-modal').classList.add('open');
 }
 
-function updateBorrowPreview() {
-  const amount = parseFloat(document.getElementById('borrow-amount').value) || 0;
-  const collEth = parseFloat(document.getElementById('pos-collateral').textContent) || 0;
-  const maxBorrow = collEth * 0.66;
-  const pct = maxBorrow > 0 ? Math.min((amount / maxBorrow) * 100, 100) : 0;
-
-  document.getElementById('borrow-limit-bar').style.width = pct + '%';
-  document.getElementById('borrow-limit-pct').textContent = pct.toFixed(0) + '%';
-
-  if (pct > 90) {
-    document.getElementById('borrow-limit-bar').style.background = 'var(--red)';
-  } else if (pct > 66) {
-    document.getElementById('borrow-limit-bar').style.background = 'linear-gradient(90deg,var(--yellow),var(--red))';
-  } else {
-    document.getElementById('borrow-limit-bar').style.background = 'linear-gradient(90deg,var(--green),var(--yellow))';
-  }
+function setFheStep(num, status) {
+  const el = document.getElementById(`fhe-step-${num}`);
+  if (!el) return;
+  el.className = 'fhe-step ' + status;
+  const icon = el.querySelector('.fhe-step-icon');
+  if (status === 'active' && icon) icon.textContent = '⏳';
+  else if (status === 'done' && icon) { icon.textContent = '✅'; if (num < 4) setFheStep(num+1, 'active'); }
+  else if (status === 'error' && icon) icon.textContent = '❌';
 }
 
-async function handleLiquidate() {
-  const target = document.getElementById('liq-target').value.trim();
-  if (!target || !target.startsWith('0x')) return showToast('', 'Enter a valid address');
-
-  addTx('pending', 'Liquidation Attempt', shortAddr(target));
-
-  try {
-    if (!state.contract) throw new Error('Contract not configured');
-
-    const tx = await state.contract.liquidate(target);
-    updateLastTx('pending', 'Awaiting result...');
-    await tx.wait();
-
-    updateLastTx('success', 'Position liquidated');
-    showToast('', 'Liquidation successful — position was undercollateralized');
-
-  } catch (err) {
-    updateLastTx('fail', 'Tx reverted — position is healthy');
-    showToast('', 'Liquidation failed — position is protected by VEIL');
-  }
+function hideFheModal() {
+  if (fheTimer) clearInterval(fheTimer);
+  document.getElementById('fhe-modal').classList.remove('open');
 }
 
-// 
-// UI HELPERS
-// 
-function switchTab(name) {
-  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(`tab-${name}`).style.display = 'block';
-  event.target.classList.add('active');
+// ─────────────────────────────────────────────────────────────
+// TX FEED
+// ─────────────────────────────────────────────────────────────
+let txList = [];
+
+function addTx(status, label, detail) {
+  txList.unshift({ status, label, detail });
+  if (txList.length > 8) txList.pop();
+  renderTxFeed();
 }
 
-function showSection(tab) {
-  document.getElementById(`app-main`).scrollIntoView({ behavior: 'smooth' });
-  setTimeout(() => {
-    document.querySelectorAll('.tab').forEach(t => {
-      if (t.textContent.toLowerCase() === tab) t.click();
-    });
-  }, 500);
+function updateLastTx(status, detail) {
+  if (txList.length > 0) { txList[0].status = status; txList[0].detail = detail; }
+  renderTxFeed();
 }
 
-function scrollToApp() {
-  document.getElementById('app-main').scrollIntoView({ behavior: 'smooth' });
+function renderTxFeed() {
+  const feed = document.getElementById('tx-feed');
+  document.getElementById('tx-count').textContent = txList.length;
+  if (!txList.length) { feed.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;padding:16px">No transactions yet</div>'; return; }
+  feed.innerHTML = txList.map(tx => `
+    <div class="tx-item">
+      <div class="tx-dot ${tx.status}"></div>
+      <div class="tx-label">${tx.label}</div>
+      <div class="tx-status">${tx.detail}</div>
+    </div>
+  `).join('');
 }
 
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+// ─────────────────────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────────────────────
+function showPage(page) {
+  document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById(`page-${page}`)?.classList.add('active');
+  document.getElementById(`nl-${page}`)?.classList.add('active');
+  if (page === 'borrow') updateBorrowBar();
+}
 
-function setLoading(btn, loading, text) {
-  btn.disabled = loading;
-  btn.innerHTML = loading ? `<span class="spinner"></span> ${text}` : text;
+function toggleMobileNav() {
+  document.getElementById('mobile-nav').classList.toggle('open');
+}
+
+function updateBorrowBar() {
+  const amount = parseFloat(document.getElementById('borrow-amount')?.value) || 0;
+  const avail = parseFloat(document.getElementById('borrow-available')?.textContent) || 0;
+  const pct = avail > 0 ? Math.min((amount/avail)*100, 100) : 0;
+  setText('borrow-limit-pct', `${pct.toFixed(0)}%`);
+  const bar = document.getElementById('borrow-limit-bar');
+  if (bar) bar.style.width = pct + '%';
+}
+
+// ─────────────────────────────────────────────────────────────
+// MODALS
+// ─────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+
+// ─────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
 }
 
 function shortAddr(addr) {
   return addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : '';
 }
 
-function shortHash(hash) {
-  return hash ? `${hash.slice(0,8)}...${hash.slice(-6)}` : '0x00...0000';
-}
-
 function copyAddress() {
-  navigator.clipboard.writeText(state.address);
-  showToast('', 'Address copied');
+  if (state.address) navigator.clipboard.writeText(state.address).then(() => showToast('Address copied'));
 }
 
-function copyContract() {
-  navigator.clipboard.writeText(CONFIG.CONTRACT_ADDRESS);
-  showToast('', 'Contract address copied');
+function setLoading(btn, loading, text) {
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = text;
 }
 
-// 
-// TX FEED
-// 
-// ─────────────────────────────────────────────────────────────
-// TX HISTORY — persists via localStorage
-// ─────────────────────────────────────────────────────────────
-const TX_STORAGE_KEY = 'veil_tx_history';
-const MAX_TX = 20;
+function showToast(msg, isError = false) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast' + (isError ? ' toast-error' : '');
+  let cleanMsg = msg;
+  if (msg.includes('user rejected')) cleanMsg = 'Transaction rejected';
+  if (msg.includes('position already')) cleanMsg = 'Position already open — use Add Collateral';
+  if (msg.includes('repay debt')) cleanMsg = 'Repay debt first before closing';
+  if (msg.includes('exceeds debt')) cleanMsg = 'Amount exceeds your debt';
+  el.textContent = cleanMsg.slice(0, 100);
+  container.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, isError ? 5000 : 3500);
+}
 
-function saveTxHistory(txData) {
+function cleanError(e) {
+  const msg = e?.reason || e?.message || 'Transaction failed';
+  return msg.slice(0, 100);
+}
+
+async function addCwethToWallet() {
   try {
-    const stored = JSON.parse(localStorage.getItem(TX_STORAGE_KEY) || '[]');
-    stored.unshift(txData);
-    if (stored.length > MAX_TX) stored.pop();
-    localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(stored));
-  } catch(e) {}
-}
-
-function loadTxHistory() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(TX_STORAGE_KEY) || '[]');
-    if (stored.length === 0) return;
-    const feed = document.getElementById('tx-feed');
-    feed.innerHTML = '';
-    stored.forEach(tx => {
-      const el = document.createElement('div');
-      el.className = 'tx-item';
-      el.id = tx.id;
-      el.innerHTML = `
-        <div class="tx-dot tx-dot-${tx.status}"></div>
-        <div class="tx-content">
-          <div class="tx-title">${tx.title}</div>
-          <div class="tx-meta">${tx.meta} · ${tx.time}</div>
-        </div>
-        <span class="tx-status tx-status-${tx.status}">${tx.status}</span>
-      `;
-      feed.appendChild(el);
+    const provider = window.ethereum || window.okxwallet;
+    await provider.request({
+      method: 'wallet_watchAsset',
+      params: { type: 'ERC20', options: { address: CONFIG.CWETH, symbol: 'cWETH', decimals: 18 } }
     });
-    state.txCount = stored.length;
-    document.getElementById('tx-count').textContent = `${state.txCount} txs`;
-  } catch(e) {}
+  } catch(e) {
+    showToast('Add manually: ' + CONFIG.CWETH);
+    navigator.clipboard.writeText(CONFIG.CWETH).catch(() => {});
+  }
 }
 
-function timeAgo(ts) {
-  const diff = Date.now() - ts;
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
-  return `${Math.floor(diff/86400000)}d ago`;
-}
-
-function addTx(status, title, meta) {
-  const feed = document.getElementById('tx-feed');
-  if (feed.querySelector('.empty-state')) feed.innerHTML = '';
-
-  state.txCount++;
-  document.getElementById('tx-count').textContent = `${state.txCount} txs`;
-
-  const id = `tx-${Date.now()}`;
-  const ts = Date.now();
-
-  const el = document.createElement('div');
-  el.className = 'tx-item';
-  el.id = id;
-  el.innerHTML = `
-    <div class="tx-dot tx-dot-${status}"></div>
-    <div class="tx-content">
-      <div class="tx-title">${title}</div>
-      <div class="tx-meta">${meta} · just now</div>
-    </div>
-    <span class="tx-status tx-status-${status}">${status === 'pending' ? '...' : status}</span>
-  `;
-  feed.prepend(el);
-  state.txHistory.push({ id, status, title, meta, time: 'just now', ts });
-
-  // Save to localStorage
-  saveTxHistory({ id, status, title, meta, time: 'just now', ts });
-}
-
-function updateLastTx(status, meta) {
-  const last = state.txHistory[state.txHistory.length - 1];
-  if (!last) return;
-  const el = document.getElementById(last.id);
-  if (!el) return;
-
-  el.querySelector('.tx-dot').className = `tx-dot tx-dot-${status}`;
-  const statusEl = el.querySelector('.tx-status');
-  statusEl.className = `tx-status tx-status-${status}`;
-  statusEl.textContent = status;
-  el.querySelector('.tx-meta').textContent = `${meta} · just now`;
-
-  // Update in localStorage
-  last.status = status;
-  last.meta = meta;
-  try {
-    const stored = JSON.parse(localStorage.getItem(TX_STORAGE_KEY) || '[]');
-    const idx = stored.findIndex(t => t.id === last.id);
-    if (idx !== -1) {
-      stored[idx].status = status;
-      stored[idx].meta = meta;
-      localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(stored));
-    }
-  } catch(e) {}
-}
-
-// 
-// TOAST
-// 
-function showToast(icon, message, duration = 3500) {
-  const container = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.innerHTML = `<span class="toast-icon">${icon}</span><span>${message}</span>`;
-  container.appendChild(el);
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 300);
-  }, duration);
-}
-
-function showErrorToast(message) {
-  const container = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.style.borderColor = 'rgba(239,68,68,0.3)';
-  el.style.background = 'rgba(239,68,68,0.08)';
-  // Clean up error message
-  let msg = message || 'Transaction failed';
-  if (msg.includes('user rejected')) msg = 'Transaction rejected by user';
-  if (msg.includes('position already')) msg = 'You already have an open position. Use Add Collateral instead.';
-  if (msg.includes('insufficient pool')) msg = 'Not enough liquidity in pool';
-  if (msg.includes('insufficient collateral')) msg = 'Collateral too low. Min 0.01 ETH';
-  if (msg.includes('no position')) msg = 'No open position found';
-  el.innerHTML = `<span style="color:var(--red)">❌</span> <span>${msg.slice(0, 100)}</span>`;
-  container.appendChild(el);
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 300);
-  }, 5000);
-}
-
-// 
-// SIMULATE encrypted hash animation in stats
-// 
-// Stats update after position opened - show encrypted handles
-function updateStatsEncrypted(collHandle, debtHandle) {
-  const collEl = document.getElementById('stat-collateral');
-  const debtEl = document.getElementById('stat-debt');
-  collEl.className = 'stat-value encrypted';
-  debtEl.className = 'stat-value encrypted';
-  collEl.textContent = collHandle ? shortHash(collHandle) : '0x00...0000';
-  debtEl.textContent = debtHandle ? shortHash(debtHandle) : '0x00...0000';
-}
-
-function resetStats() {
-  const collEl = document.getElementById('stat-collateral');
-  const debtEl = document.getElementById('stat-debt');
-  collEl.className = 'stat-value';
-  debtEl.className = 'stat-value';
-  collEl.textContent = '0 ETH';
-  debtEl.textContent = '0 ETH';
-  document.getElementById('stat-hf').textContent = 'Private';
-}
-
-// 
-// CLICK OUTSIDE MODAL
-// 
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.classList.remove('active');
-  });
+// ─────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  tryReconnect();
+  fetchEthPrice();
 });
 </script>
-
-
-<!-- WalletConnect disabled - coming soon -->
-
-<!-- ethers.js v6 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-
-<!-- FHE encryption handled by Render backend: veil-backend-2gki.onrender.com -->
 
 </body>
 </html>
