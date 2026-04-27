@@ -835,23 +835,41 @@
       <div class="modal-title">Connect Wallet</div>
       <button class="modal-close" onclick="closeModal('wallet-modal')">×</button>
     </div>
-    <div style="margin-bottom:8px">
-      <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Browser Extension</div>
-      <button class="wallet-opt" onclick="connectInjected('metamask')" id="mm-btn">
-        <div class="wallet-opt-icon" style="background:#f6851b;font-size:18px">🦊</div>
+    <!-- Main wallets (always visible) -->
+    <button class="wallet-opt" onclick="connectInjected('metamask')" id="mm-btn">
+      <div class="wallet-opt-icon" style="background:#f6851b;font-size:18px">🦊</div>
+      <div class="wallet-opt-info">
+        <div class="wallet-opt-name">MetaMask</div>
+        <div class="wallet-opt-desc">Most popular browser wallet</div>
+      </div>
+      <span class="wallet-opt-tag">Popular</span>
+    </button>
+    <button class="wallet-opt" onclick="connectInjected('rabby')" id="rabby-btn">
+      <div class="wallet-opt-icon" style="background:#7c3aed;font-size:18px">🐰</div>
+      <div class="wallet-opt-info">
+        <div class="wallet-opt-name">Rabby</div>
+        <div class="wallet-opt-desc">Security-first EVM wallet</div>
+      </div>
+      <span class="wallet-opt-tag">EVM</span>
+    </button>
+    <button class="wallet-opt" onclick="connectInjected('brave')" id="brave-btn">
+      <div class="wallet-opt-icon" style="background:#ff5500;font-size:18px">🦁</div>
+      <div class="wallet-opt-info">
+        <div class="wallet-opt-name">Brave Wallet</div>
+        <div class="wallet-opt-desc">Built into Brave browser</div>
+      </div>
+      <span class="wallet-opt-tag">Browser</span>
+    </button>
+
+    <!-- More wallets (hidden by default) -->
+    <div id="more-wallets" style="display:none">
+      <button class="wallet-opt" onclick="connectInjected('okx')" id="okx-btn">
+        <div class="wallet-opt-icon" style="background:#000;font-size:18px;border:1px solid #333">⬛</div>
         <div class="wallet-opt-info">
-          <div class="wallet-opt-name">MetaMask</div>
-          <div class="wallet-opt-desc">Most popular browser wallet</div>
+          <div class="wallet-opt-name">OKX Wallet</div>
+          <div class="wallet-opt-desc">By OKX Exchange</div>
         </div>
-        <span class="wallet-opt-tag">Popular</span>
-      </button>
-      <button class="wallet-opt" onclick="connectInjected('rabby')" id="rabby-btn">
-        <div class="wallet-opt-icon" style="background:#7c3aed;font-size:18px">🐰</div>
-        <div class="wallet-opt-info">
-          <div class="wallet-opt-name">Rabby</div>
-          <div class="wallet-opt-desc">Security-first EVM wallet</div>
-        </div>
-        <span class="wallet-opt-tag">EVM</span>
+        <span class="wallet-opt-tag">CEX</span>
       </button>
       <button class="wallet-opt" onclick="connectInjected('coinbase')" id="coinbase-btn">
         <div class="wallet-opt-icon" style="background:#0052ff;font-size:18px">🔵</div>
@@ -861,17 +879,37 @@
         </div>
         <span class="wallet-opt-tag">Popular</span>
       </button>
+      <button class="wallet-opt" onclick="connectInjected('rainbow')" id="rainbow-btn">
+        <div class="wallet-opt-icon" style="background:linear-gradient(135deg,#ff6b6b,#feca57,#48dbfb,#ff9ff3);font-size:18px">🌈</div>
+        <div class="wallet-opt-info">
+          <div class="wallet-opt-name">Rainbow</div>
+          <div class="wallet-opt-desc">Fun & simple Ethereum wallet</div>
+        </div>
+        <span class="wallet-opt-tag">Mobile</span>
+      </button>
+      <button class="wallet-opt" onclick="connectInjected('trust')" id="trust-btn">
+        <div class="wallet-opt-icon" style="background:#3375BB;font-size:18px">🛡️</div>
+        <div class="wallet-opt-info">
+          <div class="wallet-opt-name">Trust Wallet</div>
+          <div class="wallet-opt-desc">By Binance</div>
+        </div>
+        <span class="wallet-opt-tag">Mobile</span>
+      </button>
+      <button class="wallet-opt" onclick="connectInjected('phantom')" id="phantom-btn">
+        <div class="wallet-opt-icon" style="background:#ab9ff2;font-size:18px">👻</div>
+        <div class="wallet-opt-info">
+          <div class="wallet-opt-name">Phantom</div>
+          <div class="wallet-opt-desc">Multi-chain wallet</div>
+        </div>
+        <span class="wallet-opt-tag">Multi</span>
+      </button>
     </div>
-    <div class="divider"></div>
-    <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Mobile / Any Wallet</div>
-    <button class="wallet-opt wallet-opt-wc" onclick="connectWithWalletConnect()" id="wc-btn">
-      <div class="wallet-opt-icon" style="background:#3b99fc;font-size:18px">🔗</div>
-      <div class="wallet-opt-info">
-        <div class="wallet-opt-name">WalletConnect</div>
-        <div class="wallet-opt-desc">Trust · Rainbow · 300+ wallets</div>
-      </div>
-      <span class="wallet-opt-tag" style="color:var(--green);background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.2)">QR</span>
+
+    <!-- See more button -->
+    <button onclick="toggleMoreWallets()" id="see-more-btn" style="width:100%;padding:10px;background:transparent;border:1px dashed var(--border);border-radius:10px;color:var(--text3);font-size:12px;font-family:'Geist Mono',monospace;cursor:pointer;margin-top:4px;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
+      + See more wallets
     </button>
+
     <div class="divider"></div>
     <div class="alert alert-info" style="margin-bottom:0;font-size:12px">
       Your amounts are FHE-encrypted before leaving your browser.
@@ -1281,6 +1319,72 @@
 // ─────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
+
+
+
+// ─────────────────────────────────────────────────────────────
+// WAKE UP RENDER BACKEND ON PAGE LOAD
+// ─────────────────────────────────────────────────────────────
+async function wakeBackend() {
+  try {
+    await fetch(CONFIG.FHE_HEALTH);
+  } catch (e) {}
+}
+wakeBackend();
+setInterval(wakeBackend, 240000);
+
+// ─────────────────────────────────────────────────────────────
+// PERSIST CONNECTION ACROSS REFRESH
+// ─────────────────────────────────────────────────────────────
+async function tryReconnect() {
+  try {
+    if (!window.ethereum) return;
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts && accounts.length > 0) {
+      state.address = accounts[0];
+      state.connected = true;
+      state.provider = new ethers.BrowserProvider(window.ethereum);
+      state.signer = await state.provider.getSigner();
+      state.contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, ABI, state.signer);
+
+      // Update nav
+      document.getElementById('nav-connect-btn').style.display = 'none';
+      document.getElementById('nav-price').style.display = 'flex';
+      const addrDisplay = document.getElementById('address-display');
+      addrDisplay.style.display = 'block';
+      addrDisplay.textContent = shortAddr(state.address);
+
+      // Restore last visited page
+      const lastPage = localStorage.getItem('veil_current_page') || 'dashboard';
+      showPage(lastPage);
+      loadPosition();
+      loadStats();
+      loadWalletBalance();
+      loadVethBalance();
+      loadTxHistory();
+    }
+  } catch(e) {
+    console.log('Reconnect failed:', e.message);
+  }
+}
+
+// Try reconnect when page loads
+window.addEventListener('load', () => {
+  setTimeout(tryReconnect, 500);
+});
+
+function toggleMoreWallets() {
+  const more = document.getElementById('more-wallets');
+  const btn = document.getElementById('see-more-btn');
+  if (more.style.display === 'none') {
+    more.style.display = 'block';
+    btn.textContent = '- See less';
+  } else {
+    more.style.display = 'none';
+    btn.textContent = '+ See more wallets';
+  }
+}
+
 function showPage(page) {
   document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1299,6 +1403,9 @@ function showPage(page) {
     document.getElementById('page-connect').classList.add('active');
     return;
   }
+
+  // Save current page to localStorage
+  try { localStorage.setItem('veil_current_page', page); } catch(e) {}
 
   if (page === 'borrow') updateBorrowPageStats();
 }
@@ -2212,9 +2319,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 </script>
 
 
-<!-- WalletConnect EthereumProvider v2 -->
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.10.0/dist/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.6.2/dist/index.umd.js"></script>
+<!-- WalletConnect disabled - coming soon -->
 
 <!-- ethers.js v6 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
