@@ -97,7 +97,10 @@
   .nav-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+  }
+  @media (max-width: 480px) {
+    .nav-right { gap: 6px; }
   }
 
   .nav-price {
@@ -122,8 +125,12 @@
     font-family: 'Geist', sans-serif;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap;
   }
   .btn-connect:hover { opacity: 0.85; }
+  @media (max-width: 480px) {
+    .btn-connect { padding: 7px 12px; font-size: 12px; }
+  }
 
   .address-chip {
     font-family: 'Geist Mono', monospace;
@@ -135,6 +142,10 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.15s;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .address-chip:hover { color: var(--text); border-color: var(--border-bright); }
 
@@ -145,10 +156,12 @@
     gap: 2px;
     cursor: pointer;
     padding: 6px;
+    flex-shrink: 0;
+    z-index: 9001;
   }
   .nav-mobile-menu span {
     width: 20px; height: 2px;
-    background: var(--text2);
+    background: var(--text);
     border-radius: 1px;
     transition: all 0.2s;
   }
@@ -805,6 +818,7 @@
     .split-grid { grid-template-columns: 1fr !important; }
     .nav-links { display: none !important; }
     .nav-mobile-menu { display: flex !important; }
+    #nav-price { display: none !important; }
     .metrics-grid { grid-template-columns: 1fr 1fr; }
     .pos-grid { grid-template-columns: 1fr 1fr; }
     .app-page { padding: 20px 16px 80px; }
@@ -994,6 +1008,9 @@
   <button class="mobile-nav-link" id="mnav-borrow" onclick="showPage('borrow');toggleMobileNav()">Borrow</button>
   <button class="mobile-nav-link" id="mnav-repay" onclick="showPage('repay');toggleMobileNav()">Repay</button>
   <button class="mobile-nav-link" id="mnav-markets" onclick="showPage('markets');toggleMobileNav()">Markets</button>
+  <div class="divider" style="margin:4px 0"></div>
+  <button class="mobile-nav-link" onclick="addVethToMetaMask();toggleMobileNav()" style="color:var(--accent)">+ Add vETH to Wallet</button>
+  <button class="mobile-nav-link" onclick="openModal('account-modal');toggleMobileNav()" style="color:var(--text2)" id="mobile-account-btn" style="display:none">Account / Disconnect</button>
 </div>
 
 <div class="page-wrapper">
@@ -2791,3 +2808,4 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 
 </body>
 </html>
+
