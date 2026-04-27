@@ -1486,6 +1486,7 @@ async function fetchEthPrice() {
       const price = api.parse(data);
       if (price && price > 100) {
         liveEthPrice = Math.round(price);
+        console.log('ETH price fetched:', liveEthPrice, 'from', api.url);
         updatePriceDisplays();
         return;
       }
@@ -2038,8 +2039,8 @@ async function loadStats() {
   try {
     const [total, pool, price] = await state.contract.getStats();
     const poolEth = parseFloat(ethers.formatEther(pool)).toFixed(2);
-    const priceNum = Number(price) / 100;
-    // Update pool and positions (not price - handled by CoinGecko)
+    // Update pool and positions only - price handled by CoinGecko
+    const priceNum = Number(price) / 100; // not used for displayko)
     const lsPool = document.getElementById('ls-pool');
     if (lsPool) lsPool.textContent = `${poolEth} ETH`;
     const lsPos = document.getElementById('ls-positions');
@@ -2261,21 +2262,38 @@ async function handleClosePosition() {
 
 async function addVethToMetaMask() {
   try {
-    await window.ethereum.request({
-      method: 'wallet_watchAsset',
-      params: {
-        type: 'ERC20',
-        options: {
-          address: CONFIG.VETH_ADDRESS,
-          symbol: 'vETH',
-          decimals: 18,
-          image: 'https://raw.githubusercontent.com/sammy-xxiv/veil-finance/main/veth-logo.png',
-        },
+    // Get the active provider (works for MetaMask, OKX, Rabby etc)
+    const provider = state.provider?.provider || window.ethereum || window.okxwallet;
+    if (!provider) throw new Error('No wallet connected');
+
+    const params = {
+      type: 'ERC20',
+      options: {
+        address: CONFIG.VETH_ADDRESS,
+        symbol: 'vETH',
+        decimals: 18,
       },
+    };
+
+    // Try wallet_watchAsset
+    const result = await provider.request({
+      method: 'wallet_watchAsset',
+      params,
     });
-    showToast('', 'vETH added to MetaMask');
+
+    if (result) {
+      showToast('', 'vETH added to wallet successfully');
+    } else {
+      showToast('', 'vETH token add was dismissed');
+    }
   } catch (err) {
-    showToast('', 'Failed to add vETH: ' + err.message);
+    // Fallback: show the address for manual adding
+    if (err.message?.includes('invalid') || err.message?.includes('rejected')) {
+      showToast('', `Add manually: ${CONFIG.VETH_ADDRESS}`);
+      navigator.clipboard.writeText(CONFIG.VETH_ADDRESS).catch(() => {});
+    } else {
+      showToast('', 'Failed: ' + err.message?.slice(0, 60));
+    }
   }
 }
 
