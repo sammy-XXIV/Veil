@@ -1339,6 +1339,9 @@ setInterval(wakeBackend, 240000);
 async function tryReconnect() {
   try {
     if (!window.ethereum) return;
+    // Check we're on Sepolia before reconnecting
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== CONFIG.CHAIN_ID) return;
     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
     if (accounts && accounts.length > 0) {
       state.address = accounts[0];
@@ -1616,10 +1619,16 @@ async function connectInjected(walletType) {
   try {
     let provider = null;
 
-    if (walletType === 'coinbase' && window.coinbaseWalletExtension) {
+    if (walletType === 'okx' && window.okxwallet) {
+      provider = window.okxwallet;
+    } else if (walletType === 'brave' && window.ethereum?.isBraveWallet) {
+      provider = window.ethereum;
+    } else if (walletType === 'coinbase' && window.coinbaseWalletExtension) {
       provider = window.coinbaseWalletExtension;
     } else if (walletType === 'phantom' && window.phantom?.ethereum) {
       provider = window.phantom.ethereum;
+    } else if (walletType === 'trust' && window.trustwallet) {
+      provider = window.trustwallet;
     } else if (window.ethereum) {
       // For MetaMask, Rabby — check providers array if multiple injected
       if (window.ethereum.providers) {
@@ -1636,22 +1645,39 @@ async function connectInjected(walletType) {
     }
 
     if (!provider) {
-      const names = { metamask: 'MetaMask', rabby: 'Rabby', phantom: 'Phantom', coinbase: 'Coinbase Wallet' };
+      const names = { metamask: 'MetaMask', rabby: 'Rabby', phantom: 'Phantom', coinbase: 'Coinbase Wallet', okx: 'OKX Wallet', brave: 'Brave Wallet', rainbow: 'Rainbow', trust: 'Trust Wallet' };
       throw new Error(`${names[walletType]} not detected. Please install it first.`);
     }
 
-    const accounts = await provider.request({ method: 'eth_requestAccounts' });
-
-    // Switch to Sepolia
+    // Switch to Sepolia FIRST before requesting accounts
     try {
       await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
     } catch (e) {
       if (e.code === 4902) {
+        // Chain not added yet — add it
         await provider.request({
           method: 'wallet_addEthereumChain',
-          params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL] }],
+          params: [{
+            chainId: CONFIG.CHAIN_ID,
+            chainName: CONFIG.CHAIN_NAME,
+            rpcUrls: [CONFIG.RPC_URL],
+            nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+            blockExplorerUrls: ['https://sepolia.etherscan.io']
+          }],
         });
+      } else if (e.code !== 4001) {
+        // Ignore user rejection, throw everything else
+        throw new Error('Please switch to Sepolia testnet to use VEIL Finance.');
       }
+    }
+
+    // Now request accounts
+    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+
+    // Verify we're on Sepolia
+    const chainId = await provider.request({ method: 'eth_chainId' });
+    if (chainId !== CONFIG.CHAIN_ID) {
+      throw new Error('Please switch to Sepolia testnet. VEIL runs on Sepolia only.');
     }
 
     state.address = accounts[0];
