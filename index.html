@@ -803,8 +803,8 @@
   /* Tablet */
   @media (max-width: 768px) {
     .split-grid { grid-template-columns: 1fr !important; }
-    .nav-links { display: none; }
-    .nav-mobile-menu { display: flex; }
+    .nav-links { display: none !important; }
+    .nav-mobile-menu { display: flex !important; }
     .metrics-grid { grid-template-columns: 1fr 1fr; }
     .pos-grid { grid-template-columns: 1fr 1fr; }
     .app-page { padding: 20px 16px 80px; }
@@ -917,6 +917,29 @@
   </div>
 </div>
 
+<!-- ACCOUNT MODAL -->
+<div class="modal-overlay" id="account-modal">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <div class="modal-title">Account</div>
+      <button class="modal-close" onclick="closeModal('account-modal')">×</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected Wallet</div>
+      <div style="font-family:'Geist Mono',monospace;font-size:14px;color:var(--text);word-break:break-all" id="account-full-addr"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <button onclick="copyAddress();closeModal('account-modal')" class="btn btn-outline" style="font-size:12px;padding:10px">Copy Address</button>
+      <a id="account-etherscan-link" href="#" target="_blank" style="text-decoration:none">
+        <button class="btn btn-outline" style="font-size:12px;padding:10px;width:100%">Etherscan ↗</button>
+      </a>
+    </div>
+    <button onclick="disconnectWallet()" class="btn btn-red" style="font-size:13px">
+      Disconnect
+    </button>
+  </div>
+</div>
+
 <!-- NAV -->
 <nav>
   <div class="nav-logo" onclick="showPage('connect')">
@@ -928,6 +951,7 @@
     <button class="nav-link" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
     <button class="nav-link" id="nav-deposit" onclick="showPage('deposit')">Deposit</button>
     <button class="nav-link" id="nav-borrow" onclick="showPage('borrow')">Borrow</button>
+    <button class="nav-link" id="nav-repay" onclick="showPage('repay')">Repay</button>
     <button class="nav-link" id="nav-markets" onclick="showPage('markets')">Markets</button>
   </div>
 
@@ -944,8 +968,8 @@
       </div>
     </div>
     <button class="btn-connect" id="nav-connect-btn" onclick="openModal('wallet-modal')">Connect Wallet</button>
-    <div class="address-chip" id="address-display" style="display:none" onclick="copyAddress()">0x0000...0000</div>
-    <div class="nav-mobile-menu" onclick="toggleMobileNav()" id="mobile-menu-btn">
+    <div class="address-chip" id="address-display" style="display:none" onclick="openModal('account-modal')">0x0000...0000</div>
+    <div class="nav-mobile-menu" onclick="toggleMobileNav()" id="mobile-menu-btn" style="display:flex">
       <span></span><span></span><span></span>
     </div>
   </div>
@@ -968,6 +992,7 @@
   <button class="mobile-nav-link" id="mnav-dashboard" onclick="showPage('dashboard');toggleMobileNav()">Dashboard</button>
   <button class="mobile-nav-link" id="mnav-deposit" onclick="showPage('deposit');toggleMobileNav()">Deposit</button>
   <button class="mobile-nav-link" id="mnav-borrow" onclick="showPage('borrow');toggleMobileNav()">Borrow</button>
+  <button class="mobile-nav-link" id="mnav-repay" onclick="showPage('repay');toggleMobileNav()">Repay</button>
   <button class="mobile-nav-link" id="mnav-markets" onclick="showPage('markets');toggleMobileNav()">Markets</button>
 </div>
 
@@ -1211,6 +1236,74 @@
               </div>
             </div>
             <button class="btn btn-green" id="repay-btn" onclick="handleRepay()">Repay Debt</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- REPAY PAGE -->
+  <div id="page-repay" class="app-page">
+    <div class="page-header">
+      <div class="page-title">Repay</div>
+      <div class="page-sub">Repay your debt to improve health factor</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="split-grid">
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Repay Debt</div>
+          </div>
+          <div class="card-body">
+            <div class="pos-item" style="margin-bottom:16px">
+              <div class="pos-item-label">Outstanding Debt</div>
+              <div class="pos-item-value" id="repay2-debt" style="color:var(--red)">— ETH</div>
+              <div class="pos-item-sub" id="repay2-debt-usd"></div>
+            </div>
+            <div class="pos-item" style="margin-bottom:16px">
+              <div class="pos-item-label">Wallet Balance</div>
+              <div class="pos-item-value" id="repay2-balance">— ETH</div>
+            </div>
+            <div class="form-group">
+              <div class="form-label">
+                Amount to Repay
+                <span class="form-hint" id="repay2-max-hint"></span>
+              </div>
+              <div class="input-wrap">
+                <input class="input" type="number" id="repay-amount2" placeholder="0.0" step="0.01" min="0.001">
+                <span class="input-suffix">ETH</span>
+              </div>
+            </div>
+            <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
+              Repaying debt improves your health factor and reduces liquidation risk.
+            </div>
+            <button class="btn btn-green" id="repay-btn2" onclick="handleRepay2()">
+              Repay Debt
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Close Position</div></div>
+          <div class="card-body">
+            <div class="alert alert-warning" style="font-size:12px;margin-bottom:16px">
+              You must repay all debt before closing your position. Your collateral will be returned and vETH burned.
+            </div>
+            <div class="pos-item" style="margin-bottom:16px">
+              <div class="pos-item-label">Collateral to Return</div>
+              <div class="pos-item-value" id="repay2-collateral" style="color:var(--green)">— ETH</div>
+            </div>
+            <div class="pos-item" style="margin-bottom:16px">
+              <div class="pos-item-label">vETH to Burn</div>
+              <div class="pos-item-value" id="repay2-veth">— vETH</div>
+            </div>
+            <button class="btn btn-red" id="close-btn2" onclick="handleClosePosition2()">
+              Close Position
+            </button>
           </div>
         </div>
       </div>
@@ -1508,6 +1601,127 @@ function updatePriceDisplays() {
 fetchEthPrice();
 setInterval(fetchEthPrice, 60000);
 
+
+
+async function handleRepay2() {
+  const amount = parseFloat(document.getElementById('repay-amount2').value);
+  if (!amount || amount <= 0) return showToast('', 'Enter a valid amount');
+  if (!state.hasPosition) return showErrorToast('No open position found');
+
+  const btn = document.getElementById('repay-btn2');
+  setLoading(btn, true, 'Repaying...');
+  addTx('pending', 'Repay', `${amount} ETH`);
+
+  try {
+    if (!state.contract) throw new Error('Contract not configured');
+    const amountWei = ethers.parseEther(amount.toString());
+    showToast('', 'Encrypting amount with FHE...');
+    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    const tx = await state.contract.repay(encInput, inputProof, { value: amountWei });
+    updateLastTx('pending', 'Confirming...');
+    await tx.wait();
+    updateLastTx('success', `Repaid ${amount} ETH`);
+    showToast('', `Repaid ${amount} ETH successfully`);
+    // Update stored debt
+    const prevDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
+    localStorage.setItem('veil_debt_eth', Math.max(0, prevDebt - amount).toString());
+    loadPosition();
+    loadRepayPage();
+  } catch (err) {
+    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
+    showErrorToast(err.message || 'Transaction failed');
+  } finally {
+    setLoading(btn, false, 'Repay Debt');
+  }
+}
+
+async function handleClosePosition2() {
+  if (!state.hasPosition) return showToast('', 'No open position');
+
+  // Check for outstanding debt
+  const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
+  if (storedDebt > 0) {
+    return showErrorToast(`Repay your debt of ${storedDebt.toFixed(4)} ETH before closing`);
+  }
+
+  const btn = document.getElementById('close-btn2');
+  setLoading(btn, true, 'Closing...');
+  addTx('pending', 'Close Position', 'Withdrawing collateral');
+
+  try {
+    if (!state.contract) throw new Error('Contract not configured');
+    const tx = await state.contract.closePosition();
+    updateLastTx('pending', 'Confirming...');
+    await tx.wait();
+    updateLastTx('success', 'Position closed');
+    showToast('', 'Position closed. Collateral returned to wallet.');
+    localStorage.removeItem('veil_debt_eth');
+    state.hasPosition = false;
+    loadPosition();
+    loadStats();
+    loadWalletBalance();
+    showPage('dashboard');
+  } catch (err) {
+    updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
+    showErrorToast(err.message || 'Transaction failed');
+  } finally {
+    setLoading(btn, false, 'Close Position');
+  }
+}
+
+function loadRepayPage() {
+  const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
+  const ETH_PRICE = liveEthPrice || 3000;
+
+  const debtEl = document.getElementById('repay2-debt');
+  if (debtEl) debtEl.textContent = storedDebt > 0 ? `${storedDebt.toFixed(4)} ETH` : 'No debt';
+  const debtUsdEl = document.getElementById('repay2-debt-usd');
+  if (debtUsdEl) debtUsdEl.textContent = storedDebt > 0 ? `$${(storedDebt * ETH_PRICE).toFixed(2)}` : '';
+  const hintEl = document.getElementById('repay2-max-hint');
+  if (hintEl) hintEl.textContent = storedDebt > 0 ? `Max: ${storedDebt.toFixed(4)} ETH` : '';
+
+  // Balance
+  if (state.provider && state.address) {
+    state.provider.getBalance(state.address).then(bal => {
+      const balEth = parseFloat(ethers.formatEther(bal)).toFixed(4);
+      const el = document.getElementById('repay2-balance');
+      if (el) el.textContent = `${balEth} ETH`;
+    }).catch(() => {});
+  }
+
+  // Collateral from position
+  const collEl = document.getElementById('repay2-collateral');
+  const dashColl = document.getElementById('dash-collateral');
+  if (collEl && dashColl) collEl.textContent = dashColl.textContent;
+
+  // vETH
+  const vethEl = document.getElementById('repay2-veth');
+  const dashVeth = document.getElementById('dash-veth');
+  if (vethEl && dashVeth) vethEl.textContent = dashVeth.textContent;
+}
+
+function disconnectWallet() {
+  state.connected = false;
+  state.address = null;
+  state.provider = null;
+  state.signer = null;
+  state.contract = null;
+  state.hasPosition = false;
+  state.fhevmInstance = null;
+
+  // Reset nav
+  document.getElementById('nav-connect-btn').style.display = 'block';
+  document.getElementById('nav-price').style.display = 'none';
+  document.getElementById('address-display').style.display = 'none';
+
+  // Clear localStorage page
+  try { localStorage.removeItem('veil_current_page'); } catch(e) {}
+
+  closeModal('account-modal');
+  showPage('connect');
+  showToast('', 'Wallet disconnected');
+}
+
 function showPage(page) {
   document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1531,6 +1745,7 @@ function showPage(page) {
   try { localStorage.setItem('veil_current_page', page); } catch(e) {}
 
   if (page === 'borrow') updateBorrowPageStats();
+  if (page === 'repay') loadRepayPage();
 }
 
 function updateBorrowPageStats() {
@@ -1889,6 +2104,12 @@ function onConnected() {
   const addrDisplay = document.getElementById('address-display');
   addrDisplay.style.display = 'block';
   addrDisplay.textContent = shortAddr(state.address);
+
+  // Update account modal
+  const fullAddr = document.getElementById('account-full-addr');
+  if (fullAddr) fullAddr.textContent = state.address;
+  const esLink = document.getElementById('account-etherscan-link');
+  if (esLink) esLink.href = `https://sepolia.etherscan.io/address/${state.address}`;
 
   // Navigate to dashboard
   showPage('dashboard');
