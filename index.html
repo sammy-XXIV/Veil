@@ -2631,6 +2631,13 @@ async function handleRepay() {
 
 async function handleClosePosition() {
   if (!state.hasPosition) return showToast('', 'No open position');
+
+  // Block close if outstanding debt
+  const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
+  if (storedDebt > 0) {
+    return showErrorToast(`Repay your debt of ${storedDebt.toFixed(4)} ETH before closing. Go to Repay page.`);
+  }
+
   const btn = document.getElementById('close-btn');
   setLoading(btn, true, 'Closing Position...');
   addTx('pending', 'Close Position', 'Withdrawing collateral');
@@ -2647,11 +2654,12 @@ async function handleClosePosition() {
     loadPosition();
     loadStats();
     loadWalletBalance();
+    showPage('dashboard');
   } catch (err) {
     updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
     showErrorToast(err.message || 'Transaction failed');
   } finally {
-    setLoading(btn, false, 'Close Position & Withdraw Collateral');
+    setLoading(btn, false, 'Close Position');
   }
 }
 
