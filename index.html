@@ -932,9 +932,16 @@
   </div>
 
   <div class="nav-right">
-    <div class="nav-price" id="nav-price" style="display:none">
-      <span>ETH</span>
-      <span class="price" id="eth-price-display">$3,000</span>
+    <div class="nav-price" id="nav-price" style="display:none;gap:12px">
+      <div style="display:flex;align-items:center;gap:5px">
+        <span>ETH</span>
+        <span class="price" id="eth-price-display">$3,000</span>
+      </div>
+      <div style="width:1px;height:14px;background:var(--border)"></div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span id="nav-balance-eth" style="color:var(--text2)">— ETH</span>
+        <span id="nav-balance-usd" style="color:var(--text3);font-size:11px"></span>
+      </div>
     </div>
     <button class="btn-connect" id="nav-connect-btn" onclick="openModal('wallet-modal')">Connect Wallet</button>
     <div class="address-chip" id="address-display" style="display:none" onclick="copyAddress()">0x0000...0000</div>
@@ -942,7 +949,19 @@
       <span></span><span></span><span></span>
     </div>
   </div>
+
+<!-- WRONG NETWORK BANNER -->
 </nav>
+
+<!-- WRONG NETWORK OVERLAY -->
+<div id="wrong-network" style="display:none;position:fixed;inset:0;background:rgba(6,6,10,0.95);z-index:8000;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px">
+  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+  <div style="font-family:'Instrument Serif',serif;font-size:28px;margin-bottom:8px">Wrong Network</div>
+  <div style="color:var(--text2);font-size:14px;margin-bottom:24px;max-width:340px">VEIL Finance runs on Sepolia Testnet only. Please switch your wallet to Sepolia to continue.</div>
+  <button onclick="switchToSepolia()" style="padding:12px 28px;background:var(--accent);color:#050506;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Geist',sans-serif;cursor:pointer">
+    Switch to Sepolia
+  </button>
+</div>
 
 <!-- MOBILE NAV -->
 <div class="mobile-nav" id="mobile-nav">
@@ -1016,13 +1035,13 @@
         <div class="metric">
           <div class="metric-label">Max Borrow</div>
           <div class="metric-value" id="dash-max-borrow" style="color:var(--green)">— ETH</div>
-          <div class="metric-sub">66% of collateral</div>
+          <div class="metric-sub">66% of collateral value</div>
         </div>
         <div class="metric">
-          <div class="metric-label">Health Factor</div>
-          <div class="metric-value" style="color:var(--accent2)">Private</div>
-          <div class="metric-sub">Encrypted onchain</div>
-        </div>
+          <div class="metric-label">Liq. Price</div>
+          <div class="metric-value" id="dash-liq-price" style="color:var(--red)">—</div>
+          <div class="metric-sub">ETH price at liquidation</div>
+      </div>
       </div>
 
       <!-- Health bar -->
@@ -1388,6 +1407,106 @@ function toggleMoreWallets() {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// NETWORK GUARD
+// ─────────────────────────────────────────────────────────────
+function showWrongNetwork() {
+  const el = document.getElementById('wrong-network');
+  el.style.display = 'flex';
+}
+
+function hideWrongNetwork() {
+  const el = document.getElementById('wrong-network');
+  el.style.display = 'none';
+}
+
+async function switchToSepolia() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: CONFIG.CHAIN_ID }]
+    });
+    hideWrongNetwork();
+  } catch (e) {
+    if (e.code === 4902) {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: CONFIG.CHAIN_ID,
+          chainName: CONFIG.CHAIN_NAME,
+          rpcUrls: [CONFIG.RPC_URL],
+          nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+          blockExplorerUrls: ['https://sepolia.etherscan.io']
+        }]
+      });
+      hideWrongNetwork();
+    }
+  }
+}
+
+// Listen for network changes
+if (window.ethereum) {
+  window.ethereum.on('chainChanged', (chainId) => {
+    if (chainId !== CONFIG.CHAIN_ID) {
+      showWrongNetwork();
+    } else {
+      hideWrongNetwork();
+    }
+  });
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// LIVE ETH PRICE FROM COINGECKO
+// ─────────────────────────────────────────────────────────────
+let liveEthPrice = 3000;
+
+async function fetchEthPrice() {
+  // Try multiple APIs in order
+  const apis = [
+    {
+      url: 'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD',
+      parse: (d) => d?.USD
+    },
+    {
+      url: 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT',
+      parse: (d) => parseFloat(d?.price)
+    },
+    {
+      url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot',
+      parse: (d) => parseFloat(d?.data?.amount)
+    },
+  ];
+
+  for (const api of apis) {
+    try {
+      const res = await fetch(api.url);
+      const data = await res.json();
+      const price = api.parse(data);
+      if (price && price > 100) {
+        liveEthPrice = Math.round(price);
+        updatePriceDisplays();
+        return;
+      }
+    } catch(e) {}
+  }
+  // All failed — keep using current liveEthPrice (default 3000)
+}
+
+function updatePriceDisplays() {
+  const priceEl = document.getElementById('eth-price-display');
+  if (priceEl) priceEl.textContent = `$${liveEthPrice.toLocaleString()}`;
+  const lsPrice = document.getElementById('ls-price');
+  if (lsPrice) lsPrice.textContent = `$${liveEthPrice.toLocaleString()}`;
+  const mktPrice = document.getElementById('mkt-price');
+  if (mktPrice) mktPrice.textContent = `$${liveEthPrice.toLocaleString()}`;
+}
+
+// Fetch price on load and every 60 seconds
+fetchEthPrice();
+setInterval(fetchEthPrice, 60000);
+
 function showPage(page) {
   document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1554,32 +1673,30 @@ async function loadWalletBalance() {
   const el = document.getElementById('wallet-balance');
   try {
     if (!state.provider || !state.address) return;
-    // Show 0 immediately
-    el.textContent = 'Balance: 0.0000 ETH ($0.00)';
-    el.style.display = 'inline';
 
     // Fetch real ETH balance
     const balWei = await state.provider.getBalance(state.address);
     const balEth = parseFloat(ethers.formatEther(balWei)).toFixed(4);
-
-    // Get ETH price from contract or use config default
-    let ethPriceUsd = 3000;
-    try {
-      if (state.contract) {
-        const [, , price] = await state.contract.getStats();
-        ethPriceUsd = Number(price) / 100;
-      }
-    } catch (_) {}
+    const ethPriceUsd = liveEthPrice || 3000;
 
     const balUsd = (parseFloat(balEth) * ethPriceUsd).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
 
-    el.textContent = `Balance: ${balEth} ETH ($${balUsd})`;
+    // Update deposit page balance hint
+    if (el) {
+      el.textContent = `Balance: ${balEth} ETH ($${balUsd})`;
+      el.style.display = 'inline';
+    }
+
+    // Update nav balance
+    const navBalEth = document.getElementById('nav-balance-eth');
+    const navBalUsd = document.getElementById('nav-balance-usd');
+    if (navBalEth) navBalEth.textContent = `${balEth} ETH`;
+    if (navBalUsd) navBalUsd.textContent = `($${balUsd})`;
+
   } catch (e) {
-    el.textContent = 'Balance: 0.0000 ETH ($0.00)';
-    el.style.display = 'inline';
     console.error('loadWalletBalance:', e);
   }
 }
@@ -1677,7 +1794,8 @@ async function connectInjected(walletType) {
     // Verify we're on Sepolia
     const chainId = await provider.request({ method: 'eth_chainId' });
     if (chainId !== CONFIG.CHAIN_ID) {
-      throw new Error('Please switch to Sepolia testnet. VEIL runs on Sepolia only.');
+      showWrongNetwork();
+      return;
     }
 
     state.address = accounts[0];
@@ -1846,23 +1964,69 @@ async function loadPosition() {
       if (noPos) noPos.style.display = 'none';
       if (hasPos) hasPos.style.display = 'block';
 
-      // Get encrypted handles
-      const collHandle = await state.contract.getCollateral(state.address);
-      const debtHandle = await state.contract.getDebt(state.address);
+      // Update deposit button label
+      const depBtn = document.getElementById('deposit-btn');
+      if (depBtn) depBtn.textContent = 'Add Collateral';
 
-      // Show encrypted handles in stats
-      updateStatsEncrypted(collHandle, debtHandle);
+      // Get position metadata — plaintext collateral from V3
+      const [exists, openedAt, collateralPlain, accruedInterest] =
+        await state.contract.getPositionMeta(state.address);
 
-      // Try user decrypt if fhevm instance available
-      if (state.fhevmInstance) {
-        await decryptPosition(collHandle, debtHandle);
-      } else {
-        document.getElementById('pos-collateral').textContent = 'Encrypted';
-        document.getElementById('pos-debt').textContent = 'Encrypted';
-      }
+      const ETH_PRICE = liveEthPrice || 3000;
+      const collEth = parseFloat(ethers.formatEther(collateralPlain));
+      const collUsd = (collEth * ETH_PRICE).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      const maxBorrow = (collEth * 0.66).toFixed(4);
+      const maxBorrowUsd = (parseFloat(maxBorrow) * ETH_PRICE).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      const interestEth = parseFloat(ethers.formatEther(accruedInterest)).toFixed(6);
+
+      // Liquidation price from stored debt
+      const storedDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
+      const liqPrice = storedDebt > 0 && collEth > 0
+        ? ((storedDebt * 1.5) / collEth).toFixed(0)
+        : null;
+
+      // Update collateral displays
+      const posCollEl = document.getElementById('pos-collateral');
+      if (posCollEl) posCollEl.textContent = `${collEth.toFixed(4)} ETH`;
+      const dashCollEl = document.getElementById('dash-collateral');
+      if (dashCollEl) dashCollEl.textContent = `${collEth.toFixed(4)} ETH`;
+      const dashCollUsdEl = document.getElementById('dash-collateral-usd');
+      if (dashCollUsdEl) dashCollUsdEl.textContent = `$${collUsd}`;
+
+      // Update max borrow
+      const dashMaxEl = document.getElementById('dash-max-borrow');
+      if (dashMaxEl) dashMaxEl.textContent = `${maxBorrow} ETH ($${maxBorrowUsd})`;
+      const borrowAvailEl = document.getElementById('borrow-available');
+      if (borrowAvailEl) borrowAvailEl.textContent = `${maxBorrow} ETH`;
+      const borrowHintEl = document.getElementById('borrow-max-hint');
+      if (borrowHintEl) borrowHintEl.textContent = `Max: ${maxBorrow} ETH ($${maxBorrowUsd})`;
+
+      // Update liquidation price
+      const liqEl = document.getElementById('dash-liq-price');
+      if (liqEl) liqEl.textContent = liqPrice ? `$${liqPrice}` : 'Borrow first';
+
+      // Update interest
+      const interestEl = document.getElementById('dash-interest');
+      if (interestEl) interestEl.textContent = `${interestEth} ETH`;
+
+      // Load vETH balance
+      await loadVethBalance();
+
+      // Load pool for borrow page
+      try {
+        const pool = await state.contract.poolBalance();
+        const poolEth = parseFloat(ethers.formatEther(pool)).toFixed(2);
+        const borrowPoolEl = document.getElementById('borrow-pool');
+        if (borrowPoolEl) borrowPoolEl.textContent = `${poolEth} ETH`;
+      } catch(_) {}
+
     } else {
-      document.getElementById('no-position-state').style.display = 'block';
-      document.getElementById('has-position-state').style.display = 'none';
+      const noPos = document.getElementById('dash-no-pos');
+      const hasPos = document.getElementById('dash-has-pos');
+      if (noPos) noPos.style.display = 'block';
+      if (hasPos) hasPos.style.display = 'none';
+      const depBtn = document.getElementById('deposit-btn');
+      if (depBtn) depBtn.textContent = 'Deposit & Open Position';
     }
   } catch (e) {
     console.error('loadPosition:', e);
@@ -1875,23 +2039,21 @@ async function loadStats() {
     const [total, pool, price] = await state.contract.getStats();
     const poolEth = parseFloat(ethers.formatEther(pool)).toFixed(2);
     const priceNum = Number(price) / 100;
-    // Update nav price
-    const priceEl = document.getElementById('eth-price-display');
-    if (priceEl) priceEl.textContent = `$${priceNum.toLocaleString()}`;
-    // Update landing stats
+    // Update pool and positions (not price - handled by CoinGecko)
     const lsPool = document.getElementById('ls-pool');
     if (lsPool) lsPool.textContent = `${poolEth} ETH`;
     const lsPos = document.getElementById('ls-positions');
     if (lsPos) lsPos.textContent = total.toString();
-    const lsPrice = document.getElementById('ls-price');
-    if (lsPrice) lsPrice.textContent = `$${priceNum.toLocaleString()}`;
-    // Update markets page
     const mktPool = document.getElementById('mkt-pool');
     if (mktPool) mktPool.textContent = `${poolEth} ETH`;
     const mktPos = document.getElementById('mkt-positions');
     if (mktPos) mktPos.textContent = total.toString();
+    // Use live price if available, fallback to contract price
+    const displayPrice = liveEthPrice || priceNum;
+    const lsPrice = document.getElementById('ls-price');
+    if (lsPrice) lsPrice.textContent = `$${displayPrice.toLocaleString()}`;
     const mktPrice = document.getElementById('mkt-price');
-    if (mktPrice) mktPrice.textContent = `$${priceNum.toLocaleString()}`;
+    if (mktPrice) mktPrice.textContent = `$${displayPrice.toLocaleString()}`;
   } catch (e) {
     console.error('loadStats:', e);
   }
@@ -1959,34 +2121,42 @@ async function handleDeposit() {
   if (!state.connected) return showToast('', 'Connect wallet first');
 
   const btn = document.getElementById('deposit-btn');
-  setLoading(btn, true, 'Encrypting & Depositing...');
+  const isAddCollateral = state.hasPosition;
+  const actionLabel = isAddCollateral ? 'Add Collateral' : 'Open Position';
 
-  addTx('pending', 'Open Position', `Depositing ${amount} ETH`);
+  setLoading(btn, true, 'Encrypting...');
+  addTx('pending', actionLabel, `${amount} ETH`);
 
   try {
-    if (!state.contract) throw new Error('Contract not configured. Update CONTRACT_ADDRESS in config.');
+    if (!state.contract) throw new Error('Contract not configured.');
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    // Encrypt amount via Render backend (Zama Relayer SDK)
     showToast('', 'Encrypting amount with FHE...');
     const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
 
-    const tx = await state.contract.openPosition(encInput, inputProof, { value: amountWei });
+    let tx;
+    if (isAddCollateral) {
+      tx = await state.contract.addCollateral(encInput, inputProof, { value: amountWei });
+    } else {
+      tx = await state.contract.openPosition(encInput, inputProof, { value: amountWei });
+    }
+
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
 
-    updateLastTx('success', `Deposited ${amount} ETH`);
+    updateLastTx('success', `${actionLabel} — ${amount} ETH`);
     state.hasPosition = true;
-    showToast('', `Position opened with ${amount} ETH collateral`);
+    showToast('', `${actionLabel} successful — ${amount} ETH`);
     loadPosition();
     loadStats();
+    loadWalletBalance();
 
   } catch (err) {
     updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showToast('', err.message?.slice(0, 80) || 'Transaction failed');
+    showErrorToast(err.message || 'Transaction failed');
   } finally {
-    setLoading(btn, false, 'Deposit & Open Position');
+    setLoading(btn, false, isAddCollateral ? 'Add Collateral' : 'Deposit & Open Position');
   }
 }
 
@@ -2014,11 +2184,17 @@ async function handleBorrow() {
 
     updateLastTx('success', `Borrowed ${amount} ETH`);
     showToast('', `Borrowed ${amount} ETH successfully`);
+    // Store debt locally for liquidation price calc
+    const prevDebt = parseFloat(localStorage.getItem('veil_debt_eth') || '0');
+    localStorage.setItem('veil_debt_eth', (prevDebt + amount).toString());
     loadPosition();
+    loadStats();
+    loadWalletBalance();
+    updateBorrowPageStats();
 
   } catch (err) {
     updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showToast('', err.message?.slice(0, 80) || 'Transaction failed');
+    showErrorToast(err.message || 'Transaction failed');
   } finally {
     setLoading(btn, false, 'Borrow');
   }
@@ -2051,7 +2227,7 @@ async function handleRepay() {
 
   } catch (err) {
     updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showToast('', err.message?.slice(0, 80) || 'Transaction failed');
+    showErrorToast(err.message || 'Transaction failed');
   } finally {
     setLoading(btn, false, 'Repay Debt');
   }
@@ -2070,13 +2246,14 @@ async function handleClosePosition() {
     await tx.wait();
     updateLastTx('success', 'Position closed');
     showToast('', 'Position closed. Collateral returned to wallet.');
+    localStorage.removeItem('veil_debt_eth');
     state.hasPosition = false;
     loadPosition();
     loadStats();
     loadWalletBalance();
   } catch (err) {
     updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
-    showToast('', err.message?.slice(0, 80) || 'Transaction failed');
+    showErrorToast(err.message || 'Transaction failed');
   } finally {
     setLoading(btn, false, 'Close Position & Withdraw Collateral');
   }
@@ -2092,7 +2269,7 @@ async function addVethToMetaMask() {
           address: CONFIG.VETH_ADDRESS,
           symbol: 'vETH',
           decimals: 18,
-          image: '',
+          image: 'https://raw.githubusercontent.com/sammy-xxiv/veil-finance/main/veth-logo.png',
         },
       },
     });
@@ -2299,16 +2476,37 @@ function updateLastTx(status, meta) {
 // 
 // TOAST
 // 
-function showToast(icon, message) {
+function showToast(icon, message, duration = 3500) {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<span class="toast-icon">${icon}</span><span>${message}</span>`;
   container.appendChild(el);
   setTimeout(() => {
-    el.classList.add('fade-out');
+    el.classList.add('out');
     setTimeout(() => el.remove(), 300);
-  }, 3500);
+  }, duration);
+}
+
+function showErrorToast(message) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.borderColor = 'rgba(239,68,68,0.3)';
+  el.style.background = 'rgba(239,68,68,0.08)';
+  // Clean up error message
+  let msg = message || 'Transaction failed';
+  if (msg.includes('user rejected')) msg = 'Transaction rejected by user';
+  if (msg.includes('position already')) msg = 'You already have an open position. Use Add Collateral instead.';
+  if (msg.includes('insufficient pool')) msg = 'Not enough liquidity in pool';
+  if (msg.includes('insufficient collateral')) msg = 'Collateral too low. Min 0.01 ETH';
+  if (msg.includes('no position')) msg = 'No open position found';
+  el.innerHTML = `<span style="color:var(--red)">❌</span> <span>${msg.slice(0, 100)}</span>`;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 300);
+  }, 5000);
 }
 
 // 
