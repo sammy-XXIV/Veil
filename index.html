@@ -836,6 +836,48 @@
   /* ── CONNECT SCREEN ── */
   .app-page { display: none !important; }
   .app-page.active { display: block !important; }
+
+  .fhe-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.3s;
+  }
+  .fhe-step-inactive {
+    opacity: 0.4;
+  }
+  .fhe-step-active {
+    border-color: var(--accent);
+    background: rgba(245,197,66,0.05);
+    opacity: 1;
+  }
+  .fhe-step-done {
+    border-color: rgba(16,185,129,0.3);
+    background: rgba(16,185,129,0.05);
+    opacity: 1;
+  }
+  .fhe-step-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+  .fhe-step-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .fhe-step-desc {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'Geist Mono', monospace;
+    margin-top: 2px;
+  }
+
 </style>
 </head>
 <body>
@@ -928,6 +970,49 @@
     <div class="alert alert-info" style="margin-bottom:0;font-size:12px">
       Your amounts are FHE-encrypted before leaving your browser.
     </div>
+  </div>
+</div>
+
+<!-- FHE PROGRESS MODAL -->
+<div class="modal-overlay" id="fhe-progress-modal">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <div style="font-family:'Instrument Serif',serif;font-size:22px;margin-bottom:6px" id="fhe-progress-title">Processing</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:24px" id="fhe-progress-subtitle">Please wait...</div>
+
+    <!-- Steps -->
+    <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:24px" id="fhe-steps">
+      <div class="fhe-step" id="step-1">
+        <div class="fhe-step-icon">⏳</div>
+        <div class="fhe-step-content">
+          <div class="fhe-step-title">Connecting to FHE backend</div>
+          <div class="fhe-step-desc">Waking up encryption server</div>
+        </div>
+      </div>
+      <div class="fhe-step fhe-step-inactive" id="step-2">
+        <div class="fhe-step-icon">🔒</div>
+        <div class="fhe-step-content">
+          <div class="fhe-step-title">Generating FHE proof</div>
+          <div class="fhe-step-desc">Zama coprocessor encrypting amount</div>
+        </div>
+      </div>
+      <div class="fhe-step fhe-step-inactive" id="step-3">
+        <div class="fhe-step-icon">✍️</div>
+        <div class="fhe-step-content">
+          <div class="fhe-step-title">Sign transaction</div>
+          <div class="fhe-step-desc">Approve in your wallet</div>
+        </div>
+      </div>
+      <div class="fhe-step fhe-step-inactive" id="step-4">
+        <div class="fhe-step-icon">⛓️</div>
+        <div class="fhe-step-content">
+          <div class="fhe-step-title">Confirming on Sepolia</div>
+          <div class="fhe-step-desc">Waiting for block confirmation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--text3)" id="fhe-timer">0s elapsed</div>
   </div>
 </div>
 
@@ -1717,6 +1802,57 @@ function loadRepayPage() {
   if (vethEl && dashVeth) vethEl.textContent = dashVeth.textContent;
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// FHE PROGRESS MODAL
+// ─────────────────────────────────────────────────────────────
+let fheTimerInterval = null;
+let fheStartTime = null;
+
+function showFheProgress(title, subtitle) {
+  document.getElementById('fhe-progress-title').textContent = title;
+  document.getElementById('fhe-progress-subtitle').textContent = subtitle;
+  // Reset all steps
+  [1,2,3,4].forEach(i => {
+    const step = document.getElementById(`step-${i}`);
+    step.className = 'fhe-step fhe-step-inactive';
+  });
+  setFheStep(1, 'active');
+  document.getElementById('fhe-timer').textContent = '0s elapsed';
+  fheStartTime = Date.now();
+  fheTimerInterval = setInterval(() => {
+    const elapsed = Math.round((Date.now() - fheStartTime) / 1000);
+    document.getElementById('fhe-timer').textContent = `${elapsed}s elapsed`;
+  }, 1000);
+  openModal('fhe-progress-modal');
+}
+
+function setFheStep(num, state) {
+  const step = document.getElementById(`step-${num}`);
+  if (!step) return;
+  if (state === 'active') {
+    step.className = 'fhe-step fhe-step-active';
+    const icon = step.querySelector('.fhe-step-icon');
+    if (icon) icon.textContent = '⏳';
+  } else if (state === 'done') {
+    step.className = 'fhe-step fhe-step-done';
+    const icon = step.querySelector('.fhe-step-icon');
+    if (icon) icon.textContent = '✅';
+    // Activate next step
+    if (num < 4) setFheStep(num + 1, 'active');
+  } else if (state === 'error') {
+    step.className = 'fhe-step';
+    step.style.borderColor = 'rgba(239,68,68,0.3)';
+    const icon = step.querySelector('.fhe-step-icon');
+    if (icon) icon.textContent = '❌';
+  }
+}
+
+function hideFheProgress() {
+  if (fheTimerInterval) clearInterval(fheTimerInterval);
+  closeModal('fhe-progress-modal');
+}
+
 function disconnectWallet() {
   state.connected = false;
   state.address = null;
@@ -2363,27 +2499,37 @@ async function handleDeposit() {
   const isAddCollateral = state.hasPosition;
   const actionLabel = isAddCollateral ? 'Add Collateral' : 'Open Position';
 
-  setLoading(btn, true, 'Encrypting...');
+  setLoading(btn, true, 'Processing...');
   addTx('pending', actionLabel, `${amount} ETH`);
+  showFheProgress(actionLabel, `Encrypting ${amount} ETH with FHE`);
 
   try {
     if (!state.contract) throw new Error('Contract not configured.');
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    showToast('', 'Encrypting amount with FHE...');
-    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    // Step 1: Backend connection (already shown as active)
+    setFheStep(1, 'done');
 
+    // Step 2: FHE encryption
+    const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    setFheStep(2, 'done');
+
+    // Step 3: Sign transaction
     let tx;
     if (isAddCollateral) {
       tx = await state.contract.addCollateral(encInput, inputProof, { value: amountWei });
     } else {
       tx = await state.contract.openPosition(encInput, inputProof, { value: amountWei });
     }
+    setFheStep(3, 'done');
 
+    // Step 4: Confirm on chain
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
+    setFheStep(4, 'done');
 
+    hideFheProgress();
     updateLastTx('success', `${actionLabel} — ${amount} ETH`);
     state.hasPosition = true;
     showToast('', `${actionLabel} successful — ${amount} ETH`);
@@ -2392,6 +2538,7 @@ async function handleDeposit() {
     loadWalletBalance();
 
   } catch (err) {
+    hideFheProgress();
     updateLastTx('fail', err.message?.slice(0, 60) || 'Failed');
     showErrorToast(err.message || 'Transaction failed');
   } finally {
@@ -2413,14 +2560,19 @@ async function handleBorrow() {
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    // Encrypt amount via Render backend
-    showToast('', 'Encrypting amount with FHE...');
+    showFheProgress('Borrow', `Encrypting ${amount} ETH borrow request`);
+    setFheStep(1, 'done');
+
     const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    setFheStep(2, 'done');
 
     const tx = await state.contract.borrow(encInput, inputProof, amountWei.toString());
+    setFheStep(3, 'done');
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
+    setFheStep(4, 'done');
 
+    hideFheProgress();
     updateLastTx('success', `Borrowed ${amount} ETH`);
     showToast('', `Borrowed ${amount} ETH successfully`);
     // Store debt locally for liquidation price calc
@@ -2452,14 +2604,19 @@ async function handleRepay() {
 
     const amountWei = ethers.parseEther(amount.toString());
 
-    // Encrypt amount via Render backend
-    showToast('', 'Encrypting amount with FHE...');
+    showFheProgress('Repay Debt', `Encrypting ${amount} ETH repayment`);
+    setFheStep(1, 'done');
+
     const { handle: encInput, inputProof } = await fheEncrypt(amountWei);
+    setFheStep(2, 'done');
 
     const tx = await state.contract.repay(encInput, inputProof, { value: amountWei });
+    setFheStep(3, 'done');
     updateLastTx('pending', 'Confirming...');
     await tx.wait();
+    setFheStep(4, 'done');
 
+    hideFheProgress();
     updateLastTx('success', `Repaid ${amount} ETH`);
     showToast('', `Repaid ${amount} ETH`);
     loadPosition();
@@ -2808,4 +2965,3 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 
 </body>
 </html>
-
