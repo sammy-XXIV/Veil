@@ -1574,11 +1574,22 @@ async function connectWithWalletConnect() {
   const originalHTML = btn.innerHTML;
 
   try {
-    if (!window.EthereumProvider) {
-      throw new Error('WalletConnect SDK not loaded yet. Please wait a moment and try again.');
+    // Debug: log available WC globals
+    console.log('WC globals:', {
+      EthereumProvider: typeof window.EthereumProvider,
+      WalletConnectEthereumProvider: typeof window.WalletConnectEthereumProvider,
+      WalletConnect: typeof window.WalletConnect,
+    });
+    // WalletConnect exports under different names depending on version
+    const WCProvider = window.EthereumProvider || 
+                       window.WalletConnectEthereumProvider ||
+                       (window.WalletConnect && window.WalletConnect.EthereumProvider);
+
+    if (!WCProvider) {
+      throw new Error('WalletConnect SDK not loaded. Please refresh and try again.');
     }
 
-    const provider = await window.EthereumProvider.init({
+    const provider = await WCProvider.init({
       projectId: CONFIG.WC_PROJECT_ID,
       chains: [11155111], // Sepolia
       showQrModal: true,
