@@ -1186,22 +1186,27 @@ const state = {
 // ─────────────────────────────────────────────────────────────
 async function initSdk() {
   setSdkStatus('loading', 'Loading FHE SDK...');
-  try {
-    // Try browser SDK first
-    const sdk = window.fhevm;
-    if (sdk?.initSDK && sdk?.createInstance) {
+
+  // Try browser SDK — global is window.fhevm per Zama docs
+  if (window.fhevm?.initSDK && window.fhevm?.createInstance) {
+    try {
       setSdkStatus('loading', 'Initializing FHE...');
       await window.fhevm.initSDK();
-      const config = { ...window.fhevm.SepoliaConfig, network: window.ethereum };
+      const config = {
+        ...window.fhevm.SepoliaConfig,
+        network: window.ethereum,
+      };
       state.fhevmInstance = await window.fhevm.createInstance(config);
       state.sdkReady = true;
       state.useBackend = false;
       setSdkStatus('ready', 'FHE SDK ready');
-      console.log('Browser SDK initialized');
+      console.log('Browser SDK initialized successfully');
       return;
+    } catch(e) {
+      console.warn('Browser SDK failed:', e.message);
     }
-  } catch(e) {
-    console.warn('Browser SDK failed, trying backend:', e.message);
+  } else {
+    console.log('window.fhevm not found, falling back to backend');
   }
 
   // Fallback to backend
@@ -1212,7 +1217,7 @@ async function initSdk() {
       state.sdkReady = true;
       state.useBackend = true;
       setSdkStatus('ready', 'FHE backend ready');
-      console.log('Using backend for encryption');
+      console.log('Using Render backend for encryption');
     } else {
       throw new Error('Backend unhealthy');
     }
@@ -1627,8 +1632,10 @@ async function handleBorrow() {
     hideFheModal();
     updateLastTx('success', `Borrowed ${amount} cWETH`);
     showToast(`Borrowed ${amount} cWETH`);
-    loadPosition();
+    await loadPosition();
+    loadStats();
     loadWalletBalance();
+    updateBorrowBar();
 
   } catch(e) {
     hideFheModal();
