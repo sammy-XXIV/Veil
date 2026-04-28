@@ -1141,6 +1141,7 @@ const CONFIG = {
   RPC_URL: 'https://ethereum-sepolia-rpc.publicnode.com',
   CONTRACT: '0xa30BB1975C0f18A096E3EED20928Fb78D08C179d',
   CWETH: '0x46208622DA27d91db4f0393733C8BA082ed83158',
+  BACKEND: 'https://veil-backend-2gki.onrender.com',
 };
 
 const CONTRACT_ABI = [
@@ -1179,56 +1180,28 @@ const state = {
 // SDK INIT
 // ─────────────────────────────────────────────────────────────
 async function initSdk() {
-  setSdkStatus('loading', 'Initializing SDK...');
+  setSdkStatus('loading', 'Pinging backend...');
   try {
-    // Try loading Zama Relayer SDK
-    if (!window.__zamaLoaded) {
-      try {
-        await loadScript('https://unpkg.com/@zama-fhe/relayer-sdk/bundle/relayer-sdk.browser.js');
-        window.__zamaLoaded = true;
-      } catch(e) {
-        // Try alternate CDN
-        await loadScript('https://cdn.jsdelivr.net/npm/@zama-fhe/relayer-sdk/bundle/relayer-sdk.browser.js');
-        window.__zamaLoaded = true;
-      }
+    const res = await fetch(`${CONFIG.BACKEND}/health`);
+    const data = await res.json();
+    if (data.status === 'ok') {
+      state.sdkReady = true;
+      setSdkStatus('ready', 'FHE backend ready');
+    } else {
+      throw new Error('Backend unhealthy');
     }
-
-    const sdk = window.relayerSdk || window.RelayerSDK || window.zamaRelayerSdk || window.fhevm;
-    if (!sdk?.createInstance) throw new Error('SDK not found on window');
-
-    // Use Sepolia config with correct contract addresses from Zama docs
-    const sepoliaConfig = sdk.SepoliaConfig || {
-      aclContractAddress: '0x687820221192C5B662b25367F70076A37bc79b6c',
-      kmsContractAddress: '0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC',
-      inputVerifierContractAddress: '0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4',
-      verifyingContractAddressDecryption: '0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1',
-      verifyingContractAddressInputVerification: '0x7048C39f048125eDa9d678AEbaDfB22F7900a29F',
-      chainId: 11155111,
-      gatewayChainId: 55815,
-      network: 'https://eth-sepolia.public.blastapi.io',
-      relayerUrl: 'https://relayer.testnet.zama.cloud',
-    };
-
-    state.fhevmInstance = await sdk.createInstance(sepoliaConfig);
-    state.sdkReady = true;
-    setSdkStatus('ready', 'FHE SDK ready');
-    console.log('Zama SDK initialized');
   } catch(e) {
-    console.error('SDK init error:', e);
-    setSdkStatus('error', 'SDK failed — contact support');
+    console.error('Backend ping failed:', e);
+    setSdkStatus('error', 'Backend offline — try again');
     state.sdkReady = false;
   }
 }
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
+async function wakeBackend() {
+  try { await fetch(`${CONFIG.BACKEND}/health`); } catch(e) {}
 }
+
+
 
 function setSdkStatus(status, text) {
   const dot = document.querySelector('#sdk-status .sdk-dot');
@@ -1241,15 +1214,26 @@ function setSdkStatus(status, text) {
 // ENCRYPT INPUT
 // ─────────────────────────────────────────────────────────────
 async function encryptAmount(amountWei) {
-  if (!state.sdkReady || !state.fhevmInstance) {
-    throw new Error('FHE SDK not ready. Please wait for SDK to initialize and try again.');
+  if (!state.sdkReady) {
+    throw new Error('FHE backend not ready. Please wait and try again.');
   }
-  const input = state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
-  input.add64(BigInt(amountWei.toString()));
-  const encrypted = await input.encrypt();
+
+  const res = await fetch(`${CONFIG.BACKEND}/encrypt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount: amountWei.toString(),
+      contractAddress: CONFIG.CONTRACT,
+      userAddress: state.address,
+    }),
+  });
+
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Encryption failed');
+
   return {
-    handle: encrypted.handles[0],
-    proof: encrypted.inputProof,
+    handle: data.handle,
+    proof: data.inputProof,
   };
 }
 
@@ -1786,8 +1770,11 @@ async function addCwethToWallet() {
 window.addEventListener('load', () => {
   tryReconnect();
   fetchEthPrice();
+  wakeBackend();
+  setInterval(wakeBackend, 240000);
 });
 </script>
 
 </body>
 </html>
+
