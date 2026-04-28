@@ -8,8 +8,15 @@
 
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-<!-- Zama Relayer SDK -->
-<script src="relayer-sdk.js" type="text/javascript"></script>
+<!-- Zama Relayer SDK — ESM module -->
+<script type="module">
+  import { initSDK, createInstance, SepoliaConfig } from "https://cdn.zama.org/relayer-sdk-js/0.3.0-8/relayer-sdk-js.js";
+  window.__zamaInitSDK = initSDK;
+  window.__zamaCreateInstance = createInstance;
+  window.__zamaSepoliaConfig = SepoliaConfig;
+  window.__zamaSDKLoaded = true;
+  console.log('Zama SDK ESM loaded');
+</script>
 
 <style>
 :root {
@@ -781,7 +788,8 @@ nav {
   <button class="mobile-nav-link" onclick="showPage('repay');toggleMobileNav()">Repay</button>
   <button class="mobile-nav-link" onclick="showPage('markets');toggleMobileNav()">Markets</button>
   <div style="height:1px;background:var(--border);margin:4px 0"></div>
-  <button class="mobile-nav-link" onclick="addCwethToWallet();toggleMobileNav()" style="color:var(--accent)">+ Add cWETH to Wallet</button>
+  <button class="mobile-nav-link" onclick="handleFaucet();toggleMobileNav()" style="color:var(--accent)">Get 0.5 cWETH (Faucet)</button>
+  <button class="mobile-nav-link" onclick="addCwethToWallet();toggleMobileNav()" style="color:var(--text3)">+ Add cWETH to Wallet</button>
   <button class="mobile-nav-link" id="mobile-account-btn" onclick="openModal('account-modal');toggleMobileNav()" style="display:none;color:var(--text2)">Account / Disconnect</button>
 </div>
 
@@ -965,9 +973,14 @@ nav {
               cWETH is Zama's confidential wrapped ETH on Sepolia. Mint the underlying WETH then wrap it.
             </div>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <a href="https://sepolia.etherscan.io/address/0xff54739b16576FA5402F211D0b938469Ab9A5f3F#writeContract" target="_blank" class="btn btn-ghost" style="text-align:center;text-decoration:none;font-size:13px;padding:10px">1. Mint WETH ↗</a>
-              <a href="https://sepolia.etherscan.io/address/0x46208622DA27d91db4f0393733C8BA082ed83158#writeContract" target="_blank" class="btn btn-ghost" style="text-align:center;text-decoration:none;font-size:13px;padding:10px">2. Wrap to cWETH ↗</a>
-              <button class="btn btn-ghost" onclick="addCwethToWallet()" style="font-size:13px;padding:10px">+ Add cWETH to Wallet</button>
+              <button class="btn btn-yellow" id="faucet-btn" onclick="handleFaucet()" style="font-size:13px;padding:10px">
+                Get 0.5 cWETH (Testnet Faucet)
+              </button>
+              <div style="font-size:11px;color:var(--text3);text-align:center">One drip per hour per address</div>
+              <div style="height:1px;background:var(--border);margin:4px 0"></div>
+              <a href="https://sepolia.etherscan.io/address/0xff54739b16576FA5402F211D0b938469Ab9A5f3F#writeContract" target="_blank" class="btn btn-ghost" style="text-align:center;text-decoration:none;font-size:12px;padding:8px">Manual: Mint WETH ↗</a>
+              <a href="https://sepolia.etherscan.io/address/0x46208622DA27d91db4f0393733C8BA082ed83158#writeContract" target="_blank" class="btn btn-ghost" style="text-align:center;text-decoration:none;font-size:12px;padding:8px">Manual: Wrap to cWETH ↗</a>
+              <button class="btn btn-ghost" onclick="addCwethToWallet()" style="font-size:12px;padding:8px">+ Add cWETH to Wallet</button>
             </div>
           </div>
         </div>
@@ -1188,15 +1201,29 @@ async function initSdk() {
   setSdkStatus('loading', 'Loading FHE SDK...');
 
   // Try browser SDK — global is window.fhevm per Zama docs
-  if (window.fhevm?.initSDK && window.fhevm?.createInstance) {
+  // Wait up to 5 seconds for ESM module to load
+  if (!window.__zamaSDKLoaded) {
+    await new Promise(resolve => {
+      let attempts = 0;
+      const check = setInterval(() => {
+        attempts++;
+        if (window.__zamaSDKLoaded || attempts > 50) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+    });
+  }
+
+  if (window.__zamaSDKLoaded && window.__zamaInitSDK && window.__zamaCreateInstance) {
     try {
       setSdkStatus('loading', 'Initializing FHE...');
-      await window.fhevm.initSDK();
+      await window.__zamaInitSDK();
       const config = {
-        ...window.fhevm.SepoliaConfig,
+        ...window.__zamaSepoliaConfig,
         network: window.ethereum,
       };
-      state.fhevmInstance = await window.fhevm.createInstance(config);
+      state.fhevmInstance = await window.__zamaCreateInstance(config);
       state.sdkReady = true;
       state.useBackend = false;
       setSdkStatus('ready', 'FHE SDK ready');
@@ -1206,7 +1233,7 @@ async function initSdk() {
       console.warn('Browser SDK failed:', e.message);
     }
   } else {
-    console.log('window.fhevm not found, falling back to backend');
+    console.log('Zama SDK not loaded yet, falling back to backend');
   }
 
   // Fallback to backend
@@ -1251,7 +1278,7 @@ async function encryptAmount(amountWei) {
   // Use browser SDK if available
   if (!state.useBackend && state.fhevmInstance) {
     try {
-      const input = state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
+      const input = await state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
       input.add64(BigInt(amountWei.toString()));
       const encrypted = await input.encrypt();
       return {
@@ -1557,6 +1584,35 @@ async function loadWalletBalance() {
 // ─────────────────────────────────────────────────────────────
 // TRANSACTION HANDLERS
 // ─────────────────────────────────────────────────────────────
+
+async function handleFaucet() {
+  if (!state.connected) return showToast('Connect wallet first', true);
+
+  const btn = document.getElementById('faucet-btn');
+  setLoading(btn, true, 'Requesting cWETH...');
+
+  try {
+    const res = await fetch(`${CONFIG.BACKEND}/faucet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: state.address }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(`0.5 cWETH sent to your wallet`);
+      loadWalletBalance();
+    } else {
+      showToast(data.error || 'Faucet failed', true);
+    }
+  } catch(e) {
+    showToast('Faucet request failed — try again', true);
+  } finally {
+    setLoading(btn, false, 'Get 0.5 cWETH (Testnet Faucet)');
+  }
+}
+
 async function handleDeposit() {
   const amount = parseFloat(document.getElementById('deposit-amount').value);
   if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
