@@ -8,6 +8,8 @@
 
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<!-- Zama Relayer SDK -->
+<script src="https://cdn.zama.org/relayer-sdk-js/0.3.0-7/relayer-sdk-js.umd.cjs" type="text/javascript"></script>
 
 <style>
 :root {
@@ -930,7 +932,7 @@ nav {
   <div id="page-deposit" class="app-page">
     <div class="page-header">
       <div class="page-title">Deposit</div>
-      <div class="page-sub">Lock cWETH as encrypted collateral</div>
+      <div class="page-sub">Lock Confidential WETH (cWETH) as encrypted collateral</div>
     </div>
     <div class="split-grid">
       <div>
@@ -942,13 +944,14 @@ nav {
             <div class="alert alert-info">Your deposit is encrypted with FHE before hitting the blockchain. The amount is never visible in plaintext.</div>
             <div class="form-group">
               <div class="form-label">
-                Amount (cWETH)
+                Amount
                 <span class="form-hint" id="deposit-balance-hint"></span>
               </div>
               <div class="input-wrap">
                 <input class="input" type="number" id="deposit-amount" placeholder="0.0" step="0.001" min="0.001">
                 <span class="input-suffix">cWETH</span>
               </div>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">You need cWETH — not Sepolia ETH. See how to get it →</div>
             </div>
             <button class="btn btn-yellow" id="deposit-btn" onclick="handleDeposit()">Deposit & Open Position</button>
           </div>
@@ -1141,6 +1144,7 @@ const CONFIG = {
   RPC_URL: 'https://ethereum-sepolia-rpc.publicnode.com',
   CONTRACT: '0xa30BB1975C0f18A096E3EED20928Fb78D08C179d',
   CWETH: '0x46208622DA27d91db4f0393733C8BA082ed83158',
+  CWETH_DECIMALS: 8,
   BACKEND: 'https://veil-backend-2gki.onrender.com',
 };
 
@@ -1173,6 +1177,7 @@ const state = {
   hasPosition: false,
   fhevmInstance: null,
   sdkReady: false,
+  useBackend: true,
   ethPrice: 3000,
 };
 
@@ -1180,19 +1185,39 @@ const state = {
 // SDK INIT
 // ─────────────────────────────────────────────────────────────
 async function initSdk() {
-  setSdkStatus('loading', 'Pinging backend...');
+  setSdkStatus('loading', 'Loading FHE SDK...');
+  try {
+    // Try browser SDK first
+    const sdk = window.fhevm;
+    if (sdk?.initSDK && sdk?.createInstance) {
+      setSdkStatus('loading', 'Initializing FHE...');
+      await window.fhevm.initSDK();
+      const config = { ...window.fhevm.SepoliaConfig, network: window.ethereum };
+      state.fhevmInstance = await window.fhevm.createInstance(config);
+      state.sdkReady = true;
+      state.useBackend = false;
+      setSdkStatus('ready', 'FHE SDK ready');
+      console.log('Browser SDK initialized');
+      return;
+    }
+  } catch(e) {
+    console.warn('Browser SDK failed, trying backend:', e.message);
+  }
+
+  // Fallback to backend
   try {
     const res = await fetch(`${CONFIG.BACKEND}/health`);
     const data = await res.json();
     if (data.status === 'ok') {
       state.sdkReady = true;
+      state.useBackend = true;
       setSdkStatus('ready', 'FHE backend ready');
+      console.log('Using backend for encryption');
     } else {
       throw new Error('Backend unhealthy');
     }
   } catch(e) {
-    console.error('Backend ping failed:', e);
-    setSdkStatus('error', 'Backend offline — try again');
+    setSdkStatus('error', 'FHE unavailable — try again');
     state.sdkReady = false;
   }
 }
@@ -1215,9 +1240,25 @@ function setSdkStatus(status, text) {
 // ─────────────────────────────────────────────────────────────
 async function encryptAmount(amountWei) {
   if (!state.sdkReady) {
-    throw new Error('FHE backend not ready. Please wait and try again.');
+    throw new Error('FHE not ready. Please wait and try again.');
   }
 
+  // Use browser SDK if available
+  if (!state.useBackend && state.fhevmInstance) {
+    try {
+      const input = state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
+      input.add64(BigInt(amountWei.toString()));
+      const encrypted = await input.encrypt();
+      return {
+        handle: encrypted.handles[0],
+        proof: encrypted.inputProof,
+      };
+    } catch(e) {
+      console.warn('Browser SDK encrypt failed, falling back to backend:', e.message);
+    }
+  }
+
+  // Use backend
   const res = await fetch(`${CONFIG.BACKEND}/encrypt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1235,6 +1276,51 @@ async function encryptAmount(amountWei) {
     handle: data.handle,
     proof: data.inputProof,
   };
+}
+
+// Show cWETH balance using browser SDK user decryption
+async function loadCwethBalance() {
+  if (!state.fhevmInstance || state.useBackend || !state.address) return;
+  try {
+    const cweth = new ethers.Contract(CONFIG.CWETH, [
+      "function confidentialBalanceOf(address) external view returns (bytes32)"
+    ], state.provider);
+
+    const handle = await cweth.confidentialBalanceOf(state.address);
+    if (handle === ethers.ZeroHash) {
+      setText('deposit-balance-hint', 'cWETH Balance: 0');
+      return;
+    }
+
+    // User decrypt
+    const keypair = state.fhevmInstance.generateKeypair();
+    const eip712 = state.fhevmInstance.createEIP712(
+      keypair.publicKey,
+      [CONFIG.CWETH],
+      Math.floor(Date.now() / 1000).toString(),
+      "10"
+    );
+    const signature = await state.signer.signTypedData(
+      eip712.domain,
+      { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
+      eip712.message
+    );
+    const result = await state.fhevmInstance.userDecrypt(
+      [{ handle, contractAddress: CONFIG.CWETH }],
+      keypair.privateKey,
+      keypair.publicKey,
+      signature.replace("0x", ""),
+      [CONFIG.CWETH],
+      state.address,
+      Math.floor(Date.now() / 1000).toString(),
+      "10"
+    );
+    const balance = result[handle];
+    const balEth = (Number(balance) / 1e18).toFixed(4);
+    setText('deposit-balance-hint', `cWETH Balance: ${balEth}`);
+  } catch(e) {
+    console.warn('Balance decrypt failed:', e.message);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1329,7 +1415,7 @@ async function onConnected(address) {
   loadWalletBalance();
 
   // Init SDK in background
-  if (!state.sdkReady) initSdk();
+  if (!state.sdkReady) initSdk().then(() => loadCwethBalance());
 }
 
 function disconnectWallet() {
@@ -1390,8 +1476,8 @@ async function loadPosition() {
       hasPos.style.display = 'block';
 
       const [, openedAt, collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
-      const collEth = parseFloat(ethers.formatEther(collateralPlain)).toFixed(4);
-      const debtEth = parseFloat(ethers.formatEther(debtPlain)).toFixed(4);
+      const collEth = parseFloat(ethers.formatUnits(collateralPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
+      const debtEth = parseFloat(ethers.formatUnits(debtPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
       const maxBorrow = (parseFloat(collEth) * 0.66).toFixed(4);
       const maxBorrowUsd = (parseFloat(maxBorrow) * liveEthPrice).toFixed(0);
       const collUsd = (parseFloat(collEth) * liveEthPrice).toFixed(0);
@@ -1480,7 +1566,7 @@ async function handleDeposit() {
   showFheModal(label, `Encrypting ${amount} cWETH`);
 
   try {
-    const amountWei = ethers.parseEther(amount.toString());
+    const amountWei = ethers.parseUnits(amount.toString(), CONFIG.CWETH_DECIMALS);
     setFheStep(1, 'done');
 
     const { handle, proof } = await encryptAmount(amountWei);
@@ -1525,7 +1611,7 @@ async function handleBorrow() {
   showFheModal('Borrow', `Encrypting ${amount} cWETH borrow`);
 
   try {
-    const amountWei = ethers.parseEther(amount.toString());
+    const amountWei = ethers.parseUnits(amount.toString(), CONFIG.CWETH_DECIMALS);
     setFheStep(1, 'done');
 
     const { handle, proof } = await encryptAmount(amountWei);
@@ -1564,7 +1650,7 @@ async function handleRepay() {
   showFheModal('Repay Debt', `Encrypting ${amount} cWETH repayment`);
 
   try {
-    const amountWei = ethers.parseEther(amount.toString());
+    const amountWei = ethers.parseUnits(amount.toString(), CONFIG.CWETH_DECIMALS);
     setFheStep(1, 'done');
 
     const { handle, proof } = await encryptAmount(amountWei);
@@ -1777,4 +1863,3 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
-
