@@ -961,7 +961,10 @@ nav {
               </div>
               <div style="font-size:11px;color:var(--text3);margin-top:6px">You need cWETH — not Sepolia ETH. See how to get it →</div>
             </div>
-            <button class="btn btn-yellow" id="deposit-btn" onclick="handleDeposit()">Deposit & Open Position</button>
+            <button class="btn btn-ghost" id="approve-btn" onclick="handleApprove()" style="margin-bottom:8px">
+              Step 1: Approve VEIL to spend cWETH
+            </button>
+            <button class="btn btn-yellow" id="deposit-btn" onclick="handleDeposit()">Step 2: Deposit & Open Position</button>
           </div>
         </div>
       </div>
@@ -1514,7 +1517,8 @@ async function loadPosition() {
       const maxBorrowUsd = (parseFloat(maxBorrow) * liveEthPrice).toFixed(0);
       const collUsd = (parseFloat(collEth) * liveEthPrice).toFixed(0);
       const debtUsd = (parseFloat(debtEth) * liveEthPrice).toFixed(0);
-      const liqPrice = parseFloat(debtEth) > 0 ? ((parseFloat(debtEth) * 1.5) / parseFloat(collEth)).toFixed(0) : null;
+      const liqRatio = parseFloat(debtEth) > 0 ? (parseFloat(debtEth) * 1.5) / parseFloat(collEth) : null;
+      const liqPrice = liqRatio ? (liqRatio * liveEthPrice).toFixed(0) : null;
 
       // Metrics
       setText('dash-collateral', `${collEth} cWETH`);
@@ -1610,6 +1614,61 @@ async function handleFaucet() {
     showToast('Faucet request failed — try again', true);
   } finally {
     setLoading(btn, false, 'Get 0.5 cWETH (Testnet Faucet)');
+  }
+}
+
+
+
+async function checkApprovalStatus() {
+  if (!state.connected || !state.contract) return;
+  try {
+    const cweth = new ethers.Contract(CONFIG.CWETH, [
+      "function isOperator(address account, address operator) external view returns (bool)",
+    ], state.provider);
+    const isApproved = await cweth.isOperator(state.address, CONFIG.CONTRACT);
+    const btn = document.getElementById('approve-btn');
+    if (btn && isApproved) {
+      btn.style.borderColor = 'rgba(16,185,129,0.3)';
+      btn.textContent = '✅ Already Approved';
+    }
+  } catch(e) {}
+}
+
+async function handleApprove() {
+  if (!state.connected) return showToast('Connect wallet first', true);
+
+  const btn = document.getElementById('approve-btn');
+  setLoading(btn, true, 'Approving...');
+
+  try {
+    const cweth = new ethers.Contract(CONFIG.CWETH, [
+      "function setOperator(address operator, uint48 until) external",
+      "function isOperator(address account, address operator) external view returns (bool)",
+    ], state.signer);
+
+    // Check if already approved
+    const isApproved = await cweth.isOperator(state.address, CONFIG.CONTRACT);
+    if (isApproved) {
+      showToast('Already approved — you can deposit');
+      setLoading(btn, false, 'Step 1: Approve VEIL to spend cWETH');
+      btn.style.borderColor = 'rgba(16,185,129,0.3)';
+      btn.textContent = '✅ Approved';
+      return;
+    }
+
+    // Approve for 1 year
+    const until = Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60);
+    const tx = await cweth.setOperator(CONFIG.CONTRACT, until);
+    await tx.wait();
+
+    showToast('Approved! You can now deposit cWETH');
+    btn.style.borderColor = 'rgba(16,185,129,0.3)';
+    btn.textContent = '✅ Approved';
+
+  } catch(e) {
+    showToast(cleanError(e), true);
+  } finally {
+    setLoading(btn, false, btn.textContent.includes('✅') ? '✅ Approved' : 'Step 1: Approve VEIL to spend cWETH');
   }
 }
 
@@ -1838,6 +1897,7 @@ function showPage(page) {
   document.getElementById(`page-${page}`)?.classList.add('active');
   document.getElementById(`nl-${page}`)?.classList.add('active');
   if (page === 'borrow') updateBorrowBar();
+  if (page === 'deposit') checkApprovalStatus();
 }
 
 function toggleMobileNav() {
