@@ -1181,20 +1181,41 @@ const state = {
 async function initSdk() {
   setSdkStatus('loading', 'Initializing SDK...');
   try {
-    // Load Zama SDK from CDN
+    // Try loading Zama Relayer SDK
     if (!window.__zamaLoaded) {
-      await loadScript('https://cdn.jsdelivr.net/npm/@zama-fhe/relayer-sdk@latest/bundle/relayer-sdk.browser.js');
-      window.__zamaLoaded = true;
+      try {
+        await loadScript('https://unpkg.com/@zama-fhe/relayer-sdk/bundle/relayer-sdk.browser.js');
+        window.__zamaLoaded = true;
+      } catch(e) {
+        // Try alternate CDN
+        await loadScript('https://cdn.jsdelivr.net/npm/@zama-fhe/relayer-sdk/bundle/relayer-sdk.browser.js');
+        window.__zamaLoaded = true;
+      }
     }
-    const { createInstance, SepoliaConfig } = window.RelayerSDK || window.zamaRelayerSdk || {};
-    if (!createInstance) throw new Error('SDK not found');
 
-    state.fhevmInstance = await createInstance(SepoliaConfig || { chainId: 11155111 });
+    const sdk = window.relayerSdk || window.RelayerSDK || window.zamaRelayerSdk || window.fhevm;
+    if (!sdk?.createInstance) throw new Error('SDK not found on window');
+
+    // Use Sepolia config with correct contract addresses from Zama docs
+    const sepoliaConfig = sdk.SepoliaConfig || {
+      aclContractAddress: '0x687820221192C5B662b25367F70076A37bc79b6c',
+      kmsContractAddress: '0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC',
+      inputVerifierContractAddress: '0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4',
+      verifyingContractAddressDecryption: '0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1',
+      verifyingContractAddressInputVerification: '0x7048C39f048125eDa9d678AEbaDfB22F7900a29F',
+      chainId: 11155111,
+      gatewayChainId: 55815,
+      network: 'https://eth-sepolia.public.blastapi.io',
+      relayerUrl: 'https://relayer.testnet.zama.cloud',
+    };
+
+    state.fhevmInstance = await sdk.createInstance(sepoliaConfig);
     state.sdkReady = true;
     setSdkStatus('ready', 'FHE SDK ready');
+    console.log('Zama SDK initialized');
   } catch(e) {
     console.error('SDK init error:', e);
-    setSdkStatus('error', 'SDK unavailable — using fallback');
+    setSdkStatus('error', 'SDK failed — contact support');
     state.sdkReady = false;
   }
 }
@@ -1220,23 +1241,16 @@ function setSdkStatus(status, text) {
 // ENCRYPT INPUT
 // ─────────────────────────────────────────────────────────────
 async function encryptAmount(amountWei) {
-  if (state.sdkReady && state.fhevmInstance) {
-    try {
-      const input = state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
-      input.add64(BigInt(amountWei.toString()));
-      const encrypted = await input.encrypt();
-      return {
-        handle: encrypted.handles[0],
-        proof: encrypted.inputProof,
-      };
-    } catch(e) {
-      console.error('FHE encrypt error:', e);
-    }
+  if (!state.sdkReady || !state.fhevmInstance) {
+    throw new Error('FHE SDK not ready. Please wait for SDK to initialize and try again.');
   }
-  // Fallback — mock encryption for demo (shows concept, not real FHE)
-  const mockHandle = ethers.zeroPadValue(ethers.toBeHex(amountWei), 32);
-  const mockProof = '0x' + '00'.repeat(64);
-  return { handle: mockHandle, proof: mockProof };
+  const input = state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
+  input.add64(BigInt(amountWei.toString()));
+  const encrypted = await input.encrypt();
+  return {
+    handle: encrypted.handles[0],
+    proof: encrypted.inputProof,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
