@@ -9,6 +9,20 @@
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 <!-- Zama Relayer SDK -->
+<!-- Fix Zama relayer URL before SDK loads -->
+<script>
+const __origFetch = window.fetch;
+window.fetch = function(url, opts) {
+  if (typeof url === 'string' && url.includes('/v1/keyurl')) {
+    url = url.replace('/v1/keyurl', '/keyurl');
+    console.log('Fixed relayer URL:', url);
+  }
+  if (url && url.href && url.href.includes('/v1/keyurl')) {
+    url = new Request(url.href.replace('/v1/keyurl', '/keyurl'), url);
+  }
+  return __origFetch.call(this, url, opts);
+};
+</script>
 <!-- Zama Relayer SDK — self hosted -->
 <script src="relayer-sdk.js" type="text/javascript"></script>
 
