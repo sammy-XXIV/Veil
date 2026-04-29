@@ -3,21 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <script>
-// Override fetch to fix Zama relayer /v1/keyurl -> /keyurl
+// Override fetch AND XHR to fix Zama relayer /v1/keyurl -> /keyurl
 (function() {
+  // Fix fetch
   const _fetch = window.fetch.bind(window);
   window.fetch = async function(resource, init) {
-    let url = typeof resource === 'string' ? resource : (resource instanceof Request ? resource.url : String(resource));
-    if (url.includes('/v1/keyurl')) {
-      url = url.replace('/v1/keyurl', '/keyurl');
-      console.log('[VEIL] Fixed URL:', url);
-      return _fetch(url, init);
+    if (typeof resource === 'string' && resource.includes('/v1/keyurl')) {
+      const fixed = resource.replace('/v1/keyurl', '/keyurl');
+      console.log('[VEIL] Fixed fetch URL:', fixed);
+      return _fetch(fixed, init);
+    }
+    if (resource instanceof Request && resource.url.includes('/v1/keyurl')) {
+      const fixed = new Request(resource.url.replace('/v1/keyurl', '/keyurl'), resource);
+      console.log('[VEIL] Fixed fetch Request:', fixed.url);
+      return _fetch(fixed, init);
     }
     return _fetch(resource, init);
   };
+
+  // Fix XMLHttpRequest
+  const _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+    if (typeof url === 'string' && url.includes('/v1/keyurl')) {
+      url = url.replace('/v1/keyurl', '/keyurl');
+      console.log('[VEIL] Fixed XHR URL:', url);
+    }
+    return _open.call(this, method, url, ...rest);
+  };
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>VEIL Finance — Confidential Lending</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700;900&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 
@@ -220,7 +235,7 @@ nav {
 
 /* ── PAGES ── */
 .page-wrapper { padding-top: 60px; min-height: 100vh; position: relative; z-index: 1; }
-.app-page { display: none; padding: 24px; max-width: 900px; margin: 0 auto; }
+.app-page { display: none; padding: 24px; max-width: 900px; margin: 0 auto; width: 100%; }
 .app-page.active { display: block; }
 
 /* ── LANDING ── */
@@ -686,11 +701,15 @@ nav {
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .split-grid { grid-template-columns: 1fr; }
   .app-page { padding: 16px; }
+  .page-wrapper { overflow-x: hidden; }
 }
 
 @media (max-width: 480px) {
   .metrics-grid { grid-template-columns: 1fr 1fr; }
-  .btn-connect { padding: 7px 12px; font-size: 12px; }
+  .btn-connect { padding: 6px 10px; font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  nav { padding: 0 12px; gap: 8px; }
+  .nav-logo { font-size: 18px; }
+  .address-chip { font-size: 10px; padding: 5px 8px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
 }
 </style>
 </head>
@@ -1307,316 +1326,69 @@ async function encryptAmount(amountWei) {
 
 // Show cWETH balance using browser SDK user decryption
 async function loadCwethBalance() {
-  if (!state.fhevmInstance || state.useBackend || !state.address) return;
+  if (!state.connected || !state.address || !state.provider) return;
+  const btn = document.getElementById('show-balance-btn');
+  if (btn) btn.textContent = 'Decrypting... 0s';
+
+  // Timer
+  let elapsed = 0;
+  const timer = setInterval(() => {
+    elapsed++;
+    if (btn) btn.textContent = `Decrypting... ${elapsed}s`;
+  }, 1000);
+
   try {
+    // Read encrypted handle from cWETHMock
     const cweth = new ethers.Contract(CONFIG.CWETH, [
       "function confidentialBalanceOf(address) external view returns (bytes32)"
     ], state.provider);
-
     const handle = await cweth.confidentialBalanceOf(state.address);
-    if (handle === ethers.ZeroHash) {
+
+    if (!handle || handle === ethers.ZeroHash) {
+      clearInterval(timer);
       setText('deposit-balance-hint', 'Balance: 0 cWETH');
-    const showBtn = document.getElementById('show-balance-btn');
-    if (showBtn) showBtn.style.display = 'none';
+      if (btn) btn.style.display = 'none';
       return;
     }
 
-    // User decrypt
-    const keypair = state.fhevmInstance.generateKeypair();
-    const eip712 = state.fhevmInstance.createEIP712(
-      keypair.publicKey,
-      [CONFIG.CWETH],
-      Math.floor(Date.now() / 1000).toString(),
-      "10"
-    );
+    // Step 1: Get keypair + EIP712 from backend
+    const prepRes = await fetch(`${CONFIG.BACKEND}/decrypt-prepare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: state.address }),
+    });
+    const prepData = await prepRes.json();
+    if (!prepData.success) throw new Error(prepData.error);
+
+    // Step 2: User signs EIP712
+    const { keypair, eip712, startTimestamp, durationDays } = prepData;
     const signature = await state.signer.signTypedData(
       eip712.domain,
       { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
-      eip712.message
+      eip712.message,
     );
-    const result = await state.fhevmInstance.userDecrypt(
-      [{ handle, contractAddress: CONFIG.CWETH }],
-      keypair.privateKey,
-      keypair.publicKey,
-      signature.replace("0x", ""),
-      [CONFIG.CWETH],
-      state.address,
-      Math.floor(Date.now() / 1000).toString(),
-      "10"
-    );
-    const balance = result[handle];
-    const balEth = (Number(balance) / 1e18).toFixed(4);
-    setText('deposit-balance-hint', `Balance: ${balEth} cWETH`);
-    const showBtn = document.getElementById('show-balance-btn');
-    if (showBtn) showBtn.style.display = 'none';
-  } catch(e) {
-    console.warn('Balance decrypt failed:', e.message);
-  }
-}
 
-// ─────────────────────────────────────────────────────────────
-// ETH PRICE
-// ─────────────────────────────────────────────────────────────
-let liveEthPrice = 3000;
-
-async function fetchEthPrice() {
-  const apis = [
-    { url: 'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD', parse: d => d?.USD },
-    { url: 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', parse: d => parseFloat(d?.price) },
-    { url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot', parse: d => parseFloat(d?.data?.amount) },
-  ];
-  for (const api of apis) {
-    try {
-      const res = await fetch(api.url);
-      const data = await res.json();
-      const price = api.parse(data);
-      if (price && price > 100) {
-        liveEthPrice = Math.round(price);
-        updatePriceDisplays();
-        return;
-      }
-    } catch(e) {}
-  }
-}
-
-function updatePriceDisplays() {
-  const p = `$${liveEthPrice.toLocaleString()}`;
-  ['nav-eth-price','ls-price','mkt-price'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = p;
-  });
-}
-
-fetchEthPrice();
-setInterval(fetchEthPrice, 60000);
-
-// ─────────────────────────────────────────────────────────────
-// WALLET CONNECTION
-// ─────────────────────────────────────────────────────────────
-async function connectWallet() {
-  try {
-    if (!window.ethereum) return showToast('No wallet detected', true);
-
-    // Switch to Sepolia first
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
-    } catch(e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 }, blockExplorerUrls: ['https://sepolia.etherscan.io'] }]
-        });
-      }
-    }
-
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId !== CONFIG.CHAIN_ID) { showWrongNetwork(); return; }
-
-    await onConnected(accounts[0]);
-
-    window.ethereum.on('accountsChanged', accs => { if (accs.length === 0) disconnectWallet(); else onConnected(accs[0]); });
-    window.ethereum.on('chainChanged', id => { if (id !== CONFIG.CHAIN_ID) showWrongNetwork(); else hideWrongNetwork(); });
-
-  } catch(e) {
-    showToast(e.message?.slice(0,80) || 'Connection failed', true);
-  }
-}
-
-async function onConnected(address) {
-  state.address = address;
-  state.connected = true;
-  state.provider = new ethers.BrowserProvider(window.ethereum);
-  state.signer = await state.provider.getSigner();
-  state.contract = new ethers.Contract(CONFIG.CONTRACT, CONTRACT_ABI, state.signer);
-
-  // Update UI
-  document.getElementById('nav-connect-btn').style.display = 'none';
-  const chip = document.getElementById('address-chip');
-  chip.style.display = 'block';
-  chip.textContent = shortAddr(address);
-  document.getElementById('nav-pill').style.display = 'flex';
-  document.getElementById('account-full-addr').textContent = address;
-  document.getElementById('account-etherscan').href = `https://sepolia.etherscan.io/address/${address}`;
-  document.getElementById('mobile-account-btn').style.display = 'block';
-
-  showPage('dashboard');
-  loadPosition();
-  loadStats();
-  loadWalletBalance();
-
-  // Init SDK in background
-  if (!state.sdkReady) initSdk();
-}
-
-function disconnectWallet() {
-  state.connected = false; state.address = null;
-  state.provider = null; state.signer = null;
-  state.contract = null; state.hasPosition = false;
-  document.getElementById('nav-connect-btn').style.display = 'block';
-  document.getElementById('address-chip').style.display = 'none';
-  document.getElementById('nav-pill').style.display = 'none';
-  document.getElementById('mobile-account-btn').style.display = 'none';
-  closeModal('account-modal');
-  showPage('connect');
-  showToast('Wallet disconnected');
-}
-
-async function tryReconnect() {
-  if (!window.ethereum) return;
-  try {
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId !== CONFIG.CHAIN_ID) return;
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    if (accounts?.length > 0) await onConnected(accounts[0]);
-  } catch(e) {}
-}
-
-// ─────────────────────────────────────────────────────────────
-// WRONG NETWORK
-// ─────────────────────────────────────────────────────────────
-function showWrongNetwork() { document.getElementById('wrong-network').style.display = 'flex'; }
-function hideWrongNetwork() { document.getElementById('wrong-network').style.display = 'none'; }
-
-async function switchToSepolia() {
-  try {
-    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
-    hideWrongNetwork();
-  } catch(e) {
-    if (e.code === 4902) {
-      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 } }] });
-      hideWrongNetwork();
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// LOAD POSITION
-// ─────────────────────────────────────────────────────────────
-async function loadPosition() {
-  if (!state.contract || !state.address) return;
-  try {
-    const hasPosOnchain = await state.contract.hasPosition(state.address);
-    state.hasPosition = hasPosOnchain;
-
-    const noPos = document.getElementById('dash-no-pos');
-    const hasPos = document.getElementById('dash-has-pos');
-
-    if (hasPosOnchain) {
-      noPos.style.display = 'none';
-      hasPos.style.display = 'block';
-
-      const [, openedAt, collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
-      const collEth = parseFloat(ethers.formatUnits(collateralPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
-      const debtEth = parseFloat(ethers.formatUnits(debtPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
-      const maxBorrow = (parseFloat(collEth) * 0.66).toFixed(4);
-      const maxBorrowUsd = (parseFloat(maxBorrow) * liveEthPrice).toFixed(0);
-      const collUsd = (parseFloat(collEth) * liveEthPrice).toFixed(0);
-      const debtUsd = (parseFloat(debtEth) * liveEthPrice).toFixed(0);
-      const liqRatio = parseFloat(debtEth) > 0 ? (parseFloat(debtEth) * 1.5) / parseFloat(collEth) : null;
-      const liqPrice = liqRatio ? (liqRatio * liveEthPrice).toFixed(0) : null;
-
-      // Metrics
-      setText('dash-collateral', `${collEth} cWETH`);
-      setText('dash-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
-      setText('dash-debt', `${debtEth} cWETH`);
-      setText('dash-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
-      setText('dash-max-borrow', `${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
-      setText('dash-liq-price', liqPrice ? `$${liqPrice}` : 'Borrow first');
-
-      // Position card
-      setText('pos-collateral', `${collEth} cWETH`);
-      setText('pos-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
-      setText('pos-debt', `${debtEth} cWETH`);
-      setText('pos-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
-      const date = new Date(Number(openedAt) * 1000);
-      setText('pos-opened', date.toLocaleDateString());
-
-      // Update deposit btn
-      const depBtn = document.getElementById('deposit-btn');
-      if (depBtn) depBtn.textContent = 'Add Collateral';
-      const depTitle = document.getElementById('deposit-card-title');
-      if (depTitle) depTitle.textContent = 'Add Collateral';
-
-      // Borrow page
-      setText('borrow-available', `${maxBorrow} cWETH`);
-      setText('borrow-max-hint', `Max: ${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
-
-      // Repay page
-      setText('repay-debt', `${debtEth} cWETH`);
-      setText('repay-max-hint', `Max: ${debtEth} cWETH`);
-      setText('repay-collateral', `${collEth} cWETH`);
-
-    } else {
-      noPos.style.display = 'block';
-      hasPos.style.display = 'none';
-      const depBtn = document.getElementById('deposit-btn');
-      if (depBtn) depBtn.textContent = 'Deposit & Open Position';
-      const depTitle = document.getElementById('deposit-card-title');
-      if (depTitle) depTitle.textContent = 'Open Position';
-
-      // Reset metrics
-      ['dash-collateral','dash-debt','dash-max-borrow','dash-liq-price'].forEach(id => setText(id, '—'));
-    }
-  } catch(e) {
-    console.error('loadPosition:', e);
-  }
-}
-
-async function loadStats() {
-  try {
-    const [positions, pool] = await state.contract.getStats();
-    const poolEth = parseFloat(ethers.formatUnits(pool, CONFIG.CWETH_DECIMALS)).toFixed(2);
-    setText('ls-positions', positions.toString());
-    setText('mkt-positions', positions.toString());
-    setText('ls-pool', `${poolEth} cWETH`);
-    setText('mkt-pool', `${poolEth} cWETH`);
-    setText('borrow-pool', `${poolEth} cWETH`);
-  } catch(e) {}
-}
-
-async function loadWalletBalance() {
-  try {
-    if (!state.provider || !state.address) return;
-    const bal = await state.provider.getBalance(state.address);
-    const ethBal = parseFloat(ethers.formatEther(bal)).toFixed(4);
-    setText('nav-balance', `${ethBal} ETH`);
-    // ETH balance not shown — cWETH balance shown separately via loadCwethBalance
-  } catch(e) {}
-}
-
-// ─────────────────────────────────────────────────────────────
-// TRANSACTION HANDLERS
-// ─────────────────────────────────────────────────────────────
-
-async function handleFaucet() {
-  if (!state.connected) return showToast('Connect wallet first', true);
-
-  const btn = document.getElementById('faucet-btn');
-  setLoading(btn, true, 'Requesting cWETH...');
-
-  try {
-    const res = await fetch(`${CONFIG.BACKEND}/faucet`, {
+    // Step 3: Backend decrypts
+    const decRes = await fetch(`${CONFIG.BACKEND}/decrypt-balance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: state.address }),
+      body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: state.address, signature, keypair, startTimestamp, durationDays }),
     });
+    const decData = await decRes.json();
+    if (!decData.success) throw new Error(decData.error);
 
-    const data = await res.json();
+    clearInterval(timer);
+    const balance = parseFloat(ethers.formatUnits(BigInt(decData.balance), CONFIG.CWETH_DECIMALS)).toFixed(4);
+    setText('deposit-balance-hint', `Balance: ${balance} cWETH`);
+    if (btn) btn.style.display = 'none';
 
-    if (data.success) {
-      showToast(`0.5 cWETH sent to your wallet`);
-      loadWalletBalance();
-    } else {
-      showToast(data.error || 'Faucet failed', true);
-    }
   } catch(e) {
-    showToast('Faucet request failed — try again', true);
-  } finally {
-    setLoading(btn, false, 'Get 0.5 cWETH (Testnet Faucet)');
+    clearInterval(timer);
+    console.error('Balance decrypt failed:', e);
+    showToast('Balance decrypt failed: ' + e.message?.slice(0,50), true);
+    if (btn) btn.textContent = 'Show balance';
   }
 }
-
 
 
 async function handleDeposit() {
@@ -1956,6 +1728,231 @@ async function addCwethToWallet() {
 // ─────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────
+
+
+let liveEthPrice = 3000;
+
+async function fetchEthPrice() {
+  const apis = [
+    { url: 'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD', parse: d => d?.USD },
+    { url: 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', parse: d => parseFloat(d?.price) },
+    { url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot', parse: d => parseFloat(d?.data?.amount) },
+  ];
+  for (const api of apis) {
+    try {
+      const res = await fetch(api.url);
+      const data = await res.json();
+      const price = api.parse(data);
+      if (price && price > 100) {
+        liveEthPrice = Math.round(price);
+        updatePriceDisplays();
+        return;
+      }
+    } catch(e) {}
+  }
+}
+
+function updatePriceDisplays() {
+  const p = `$${liveEthPrice.toLocaleString()}`;
+  ['nav-eth-price','ls-price','mkt-price'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = p;
+  });
+}
+
+async function loadStats() {
+  try {
+    const [positions, pool] = await state.contract.getStats();
+    const poolEth = parseFloat(ethers.formatUnits(pool, CONFIG.CWETH_DECIMALS)).toFixed(2);
+    setText('ls-positions', positions.toString());
+    setText('mkt-positions', positions.toString());
+    setText('ls-pool', `${poolEth} cWETH`);
+    setText('mkt-pool', `${poolEth} cWETH`);
+    setText('borrow-pool', `${poolEth} cWETH`);
+  } catch(e) {}
+}
+
+async function loadWalletBalance() {
+  try {
+    if (!state.provider || !state.address) return;
+    const bal = await state.provider.getBalance(state.address);
+    const ethBal = parseFloat(ethers.formatEther(bal)).toFixed(4);
+    setText('nav-balance', `${ethBal} ETH`);
+  } catch(e) {}
+}
+
+async function onConnected(address) {
+  state.address = address;
+  state.connected = true;
+  state.provider = new ethers.BrowserProvider(window.ethereum);
+  state.signer = await state.provider.getSigner();
+  state.contract = new ethers.Contract(CONFIG.CONTRACT, CONTRACT_ABI, state.signer);
+
+  document.getElementById('nav-connect-btn').style.display = 'none';
+  const chip = document.getElementById('address-chip');
+  chip.style.display = 'block';
+  chip.textContent = shortAddr(address);
+  document.getElementById('nav-pill').style.display = 'flex';
+  document.getElementById('account-full-addr').textContent = address;
+  document.getElementById('account-etherscan').href = `https://sepolia.etherscan.io/address/${address}`;
+  document.getElementById('mobile-account-btn').style.display = 'block';
+
+  showPage('dashboard');
+  loadPosition();
+  loadStats();
+  loadWalletBalance();
+  if (!state.sdkReady) initSdk();
+}
+
+function disconnectWallet() {
+  state.connected = false; state.address = null;
+  state.provider = null; state.signer = null;
+  state.contract = null; state.hasPosition = false;
+  document.getElementById('nav-connect-btn').style.display = 'block';
+  document.getElementById('address-chip').style.display = 'none';
+  document.getElementById('nav-pill').style.display = 'none';
+  document.getElementById('mobile-account-btn').style.display = 'none';
+  closeModal('account-modal');
+  showPage('connect');
+  showToast('Wallet disconnected');
+}
+
+function showWrongNetwork() { document.getElementById('wrong-network').style.display = 'flex'; }
+function hideWrongNetwork() { document.getElementById('wrong-network').style.display = 'none'; }
+
+async function switchToSepolia() {
+  try {
+    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
+    hideWrongNetwork();
+  } catch(e) {
+    if (e.code === 4902) {
+      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 } }] });
+      hideWrongNetwork();
+    }
+  }
+}
+
+async function loadPosition() {
+  if (!state.contract || !state.address) return;
+  try {
+    const hasPosOnchain = await state.contract.hasPosition(state.address);
+    state.hasPosition = hasPosOnchain;
+
+    const noPos = document.getElementById('dash-no-pos');
+    const hasPos = document.getElementById('dash-has-pos');
+
+    if (hasPosOnchain) {
+      noPos.style.display = 'none';
+      hasPos.style.display = 'block';
+
+      const [, openedAt, collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
+      const collEth = parseFloat(ethers.formatUnits(collateralPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
+      const debtEth = parseFloat(ethers.formatUnits(debtPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
+      const maxBorrow = (parseFloat(collEth) * 0.66).toFixed(4);
+      const maxBorrowUsd = (parseFloat(maxBorrow) * liveEthPrice).toFixed(0);
+      const collUsd = (parseFloat(collEth) * liveEthPrice).toFixed(0);
+      const debtUsd = (parseFloat(debtEth) * liveEthPrice).toFixed(0);
+      const liqRatio = parseFloat(debtEth) > 0 ? (parseFloat(debtEth) * 1.5) / parseFloat(collEth) : null;
+      const liqPrice = liqRatio ? (liqRatio * liveEthPrice).toFixed(0) : null;
+
+      setText('dash-collateral', `${collEth} cWETH`);
+      setText('dash-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
+      setText('dash-debt', `${debtEth} cWETH`);
+      setText('dash-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
+      setText('dash-max-borrow', `${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
+      setText('dash-liq-price', liqPrice ? `$${Number(liqPrice).toLocaleString()}` : 'Borrow first');
+
+      setText('pos-collateral', `${collEth} cWETH`);
+      setText('pos-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
+      setText('pos-debt', `${debtEth} cWETH`);
+      setText('pos-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
+      const date = new Date(Number(openedAt) * 1000);
+      setText('pos-opened', date.toLocaleDateString());
+
+      const depBtn = document.getElementById('deposit-btn');
+      if (depBtn) depBtn.textContent = 'Add Collateral';
+      const depTitle = document.getElementById('deposit-card-title');
+      if (depTitle) depTitle.textContent = 'Add Collateral';
+
+      setText('borrow-available', `${maxBorrow} cWETH`);
+      setText('borrow-max-hint', `Max: ${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
+      setText('repay-debt', `${debtEth} cWETH`);
+      setText('repay-max-hint', `Max: ${debtEth} cWETH`);
+      setText('repay-collateral', `${collEth} cWETH`);
+
+    } else {
+      noPos.style.display = 'block';
+      hasPos.style.display = 'none';
+      const depBtn = document.getElementById('deposit-btn');
+      if (depBtn) depBtn.textContent = 'Deposit & Open Position';
+      const depTitle = document.getElementById('deposit-card-title');
+      if (depTitle) depTitle.textContent = 'Open Position';
+      ['dash-collateral','dash-debt','dash-max-borrow','dash-liq-price'].forEach(id => setText(id, '—'));
+    }
+  } catch(e) {
+    console.error('loadPosition:', e);
+  }
+}
+
+async function handleFaucet() {
+  if (!state.connected) return showToast('Connect wallet first', true);
+  const btn = document.getElementById('faucet-btn');
+  setLoading(btn, true, 'Requesting...');
+  try {
+    const res = await fetch(`${CONFIG.BACKEND}/faucet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: state.address }),
+    });
+    const data = await res.json();
+    if (data.success) showToast('0.5 cWETH sent to your wallet');
+    else showToast(data.error || 'Faucet failed', true);
+  } catch(e) {
+    showToast('Faucet request failed', true);
+  } finally {
+    setLoading(btn, false, 'Get 0.5 cWETH (Testnet Faucet)');
+  }
+}
+
+async function connectWallet() {
+  try {
+    if (!window.ethereum) return showToast('No wallet detected', true);
+
+    try {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
+    } catch(e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 }, blockExplorerUrls: ['https://sepolia.etherscan.io'] }]
+        });
+      }
+    }
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== CONFIG.CHAIN_ID) { showWrongNetwork(); return; }
+
+    await onConnected(accounts[0]);
+
+    window.ethereum.on('accountsChanged', accs => { if (accs.length === 0) disconnectWallet(); else onConnected(accs[0]); });
+    window.ethereum.on('chainChanged', id => { if (id !== CONFIG.CHAIN_ID) showWrongNetwork(); else hideWrongNetwork(); });
+
+  } catch(e) {
+    showToast(e.message?.slice(0,80) || 'Connection failed', true);
+  }
+}
+
+async function tryReconnect() {
+  if (!window.ethereum) return;
+  try {
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== CONFIG.CHAIN_ID) return;
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts?.length > 0) await onConnected(accounts[0]);
+  } catch(e) {}
+}
+
 window.addEventListener('load', () => {
   tryReconnect();
   fetchEthPrice();
