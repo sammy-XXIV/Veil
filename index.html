@@ -9,12 +9,8 @@
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 <!-- Zama Relayer SDK -->
-<script type="module">
-  import { initSDK, createInstance, SepoliaConfig } from 'https://cdn.zama.org/relayer-sdk-js/0.3.0-7/relayer-sdk-js.umd.cjs';
-  window.__zamaSDK = { initSDK, createInstance, SepoliaConfig };
-  window.__zamaSDKLoaded = true;
-  console.log('Zama SDK loaded via ESM');
-</script>
+<!-- Zama Relayer SDK v0.3.0-8 — exposes window.fhevm -->
+<script src="https://cdn.zama.org/relayer-sdk-js/0.3.0-8/relayer-sdk-js.umd.cjs" type="text/javascript"></script>
 
 <style>
 :root {
@@ -1220,7 +1216,7 @@ async function initSdk() {
     setTimeout(() => { clearInterval(check); resolve(); }, 5000);
   });
 
-  const _sdk = window.__zamaSDK || window.fhevm || window.relayerSDK;
+  const _sdk = window.fhevm;
   if (_sdk?.initSDK && _sdk?.createInstance) {
     try {
       setSdkStatus('loading', 'Initializing FHE...');
