@@ -1194,45 +1194,26 @@ const state = {
 async function initSdk() {
   setSdkStatus('loading', 'Loading FHE SDK...');
 
-  // Try browser SDK — global is window.fhevm per Zama docs
-  // Wait up to 5 seconds for ESM module to load
-  if (!window.__zamaSDKLoaded) {
-    await new Promise(resolve => {
-      let attempts = 0;
-      const check = setInterval(() => {
-        attempts++;
-        if (window.__zamaSDKLoaded || attempts > 50) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 100);
-    });
-  }
+  const _sdk = window.relayerSDK;
 
-  // Wait for ESM module to load
-  await new Promise(resolve => {
-    if (window.__zamaSDKLoaded) return resolve();
-    const check = setInterval(() => { if (window.__zamaSDKLoaded) { clearInterval(check); resolve(); } }, 100);
-    setTimeout(() => { clearInterval(check); resolve(); }, 5000);
-  });
-
-  const _sdk = window.fhevm;
   if (_sdk?.initSDK && _sdk?.createInstance) {
     try {
       setSdkStatus('loading', 'Initializing FHE...');
       await _sdk.initSDK();
-      const config = { ..._sdk.SepoliaConfig, network: window.ethereum };
-      state.fhevmInstance = await _sdk.createInstance(config);
+      state.fhevmInstance = await _sdk.createInstance({
+        ..._sdk.SepoliaConfig,
+        network: window.ethereum || 'https://ethereum-sepolia-rpc.publicnode.com',
+      });
       state.sdkReady = true;
       state.useBackend = false;
       setSdkStatus('ready', 'FHE SDK ready');
-      console.log('Browser SDK initialized successfully');
+      console.log('FHE SDK initialized');
       return;
     } catch(e) {
-      console.warn('Browser SDK failed:', e.message, e);
+      console.warn('Browser SDK failed:', e.message);
     }
   } else {
-    console.log('Zama SDK not loaded yet, falling back to backend');
+    console.log('window.relayerSDK not found, falling back to backend');
   }
 
   // Fallback to backend
@@ -1243,15 +1224,15 @@ async function initSdk() {
       state.sdkReady = true;
       state.useBackend = true;
       setSdkStatus('ready', 'FHE backend ready');
-      console.log('Using Render backend for encryption');
     } else {
       throw new Error('Backend unhealthy');
     }
   } catch(e) {
-    setSdkStatus('error', 'FHE unavailable — try again');
+    setSdkStatus('error', 'FHE unavailable');
     state.sdkReady = false;
   }
 }
+
 
 async function wakeBackend() {
   try { await fetch(`${CONFIG.BACKEND}/health`); } catch(e) {}
