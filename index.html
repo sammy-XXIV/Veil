@@ -39,7 +39,6 @@
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 <!-- Zama Relayer SDK -->
-<!-- Zama Relayer SDK — self hosted -->
 <script src="relayer-sdk.js" type="text/javascript"></script>
 
 <style>
@@ -715,6 +714,9 @@ nav {
 </head>
 <body>
 
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
 <!-- WRONG NETWORK -->
 <div id="wrong-network">
   <div style="font-size:48px;margin-bottom:16px">⚠️</div>
@@ -906,7 +908,6 @@ nav {
 
     <div class="split-grid">
       <div>
-        <!-- No position -->
         <div id="dash-no-pos" class="card">
           <div class="card-body" style="text-align:center;padding:32px">
             <div style="font-size:32px;margin-bottom:12px">🔒</div>
@@ -916,7 +917,6 @@ nav {
           </div>
         </div>
 
-        <!-- Has position -->
         <div id="dash-has-pos" class="card" style="display:none">
           <div class="card-header">
             <div class="card-title">Position Details</div>
@@ -924,9 +924,7 @@ nav {
           </div>
           <div class="card-body">
             <div class="pos-item">
-              <div>
-                <div class="pos-item-label">Collateral</div>
-              </div>
+              <div><div class="pos-item-label">Collateral</div></div>
               <div>
                 <div class="pos-item-value" id="pos-collateral">—</div>
                 <div class="pos-item-sub" id="pos-collateral-usd"></div>
@@ -951,14 +949,13 @@ nav {
               <div><div class="pos-item-value" id="pos-opened" style="font-size:12px;color:var(--text2)">—</div></div>
             </div>
             <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <button class="btn btn-yellow" onclick="showPage('deposit')" id="deposit-action-btn">Add Collateral</button>
-              <button class="btn btn-red" onclick="handleClosePosition()" id="close-btn">Close Position</button>
+              <button class="btn btn-yellow" onclick="showPage('deposit')">Add Collateral</button>
+              <button class="btn btn-red" onclick="handleClosePosition()">Close Position</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- TX Feed -->
       <div>
         <div class="card">
           <div class="card-header">
@@ -972,7 +969,6 @@ nav {
           </div>
         </div>
 
-        <!-- SDK Status -->
         <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
           <div class="sdk-status" id="sdk-status">
             <div class="sdk-dot loading"></div>
@@ -993,42 +989,33 @@ nav {
       <div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title" id="deposit-card-title">Open Position</div>
+            <div class="card-title">Open Position</div>
           </div>
           <div class="card-body">
             <div class="alert alert-info">Your deposit is encrypted with FHE before hitting the blockchain. The amount is never visible in plaintext.</div>
             <div class="form-group">
-              <div class="form-label">
-                Amount
-                <span class="form-hint">
-                  <span id="deposit-balance-hint"></span>
-                  <button onclick="loadCwethBalance()" id="show-balance-btn" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-family:'Geist Mono',monospace;padding:0">Show balance</button>
-                </span>
-              </div>
+              <label class="form-label">Amount to Deposit <span class="form-hint">Max: 10 cWETH</span></label>
               <div class="input-wrap">
-                <input class="input" type="number" id="deposit-amount" placeholder="0.0" step="0.001" min="0.001">
-                <span class="input-suffix">cWETH</span>
+                <input type="number" class="input" placeholder="0.00" min="0" step="0.01">
+                <div class="input-suffix">cWETH</div>
               </div>
-              <div style="font-size:11px;color:var(--text3);margin-top:6px">You need cWETH — not Sepolia ETH. See how to get it →</div>
             </div>
-            <button class="btn btn-yellow" id="deposit-btn" onclick="handleDeposit()">Deposit & Open Position</button>
+            <button class="btn btn-yellow" onclick="showFheModal('Depositing', 'Encrypting and sending to chain...')">Deposit Collateral</button>
           </div>
         </div>
       </div>
       <div>
         <div class="card">
-          <div class="card-header"><div class="card-title">Get Test cWETH</div></div>
+          <div class="card-header">
+            <div class="card-title">Wallet Balance</div>
+          </div>
           <div class="card-body">
-            <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px">
-              cWETH is Zama's confidential WETH on Sepolia testnet. Click below to receive 0.5 cWETH for testing.
+            <div style="text-align:center;padding:20px 0">
+              <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Available</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px">—</div>
+              <div style="font-size:13px;color:var(--text2)">cWETH</div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <button class="btn btn-yellow" id="faucet-btn" onclick="handleFaucet()">
-                Get 0.5 cWETH — Testnet Faucet
-              </button>
-              <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:2px">One drip per hour · Sepolia testnet only</div>
-              <button class="btn btn-ghost" onclick="addCwethToWallet()" style="font-size:13px;margin-top:4px">+ Add cWETH to Wallet</button>
-            </div>
+            <button class="btn btn-ghost" onclick="openModal('balance-modal')" style="font-size:12px">View Balance</button>
           </div>
         </div>
       </div>
@@ -1039,52 +1026,32 @@ nav {
   <div id="page-borrow" class="app-page">
     <div class="page-header">
       <div class="page-title">Borrow</div>
-      <div class="page-sub">Borrow cWETH against your collateral</div>
+      <div class="page-sub">Borrow stablecoins against encrypted collateral</div>
     </div>
-    <div class="split-grid">
-      <div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">Borrow cWETH</div></div>
-          <div class="card-body">
-            <div class="pos-item" style="margin-bottom:12px">
-              <div class="pos-item-label">Available to Borrow</div>
-              <div class="pos-item-value" id="borrow-available" style="color:var(--green)">—</div>
-            </div>
-            <div class="pos-item" style="margin-bottom:16px">
-              <div class="pos-item-label">Pool Liquidity</div>
-              <div class="pos-item-value" id="borrow-pool">—</div>
-            </div>
-            <div class="form-group">
-              <div class="form-label">
-                Amount
-                <span class="form-hint" id="borrow-max-hint"></span>
-              </div>
-              <div class="input-wrap">
-                <input class="input" type="number" id="borrow-amount" placeholder="0.0" step="0.001" oninput="updateBorrowBar()">
-                <span class="input-suffix">cWETH</span>
-              </div>
-            </div>
-            <div class="limit-bar-wrap">
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:6px">
-                <span>Borrow limit</span>
-                <span id="borrow-limit-pct">0%</span>
-              </div>
-              <div class="limit-bar-bg"><div class="limit-bar-fill" id="borrow-limit-bar" style="width:0%"></div></div>
-            </div>
-            <button class="btn btn-yellow" id="borrow-btn" onclick="handleBorrow()">Borrow</button>
-          </div>
-        </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Borrow Amount</div>
       </div>
-      <div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">How Borrowing Works</div></div>
-          <div class="card-body" style="font-size:13px;color:var(--text2);line-height:1.8">
-            <div style="margin-bottom:12px">Max borrow is <strong style="color:var(--text)">66% of collateral</strong> (LTV ratio).</div>
-            <div style="margin-bottom:12px">Your position is <strong style="color:var(--accent2)">FHE encrypted</strong> — bots can't calculate your liquidation price.</div>
-            <div style="margin-bottom:12px">Liquidation threshold: <strong style="color:var(--text)">150%</strong>. You get liquidated if your collateral value drops below 150% of debt.</div>
-            <div>Liquidation bonus for liquidators: <strong style="color:var(--text)">5%</strong>.</div>
+      <div class="card-body">
+        <div class="alert alert-info">Borrow up to 66% of your collateral value</div>
+        <div class="form-group">
+          <label class="form-label">Amount to Borrow</label>
+          <div class="input-wrap">
+            <input type="number" class="input" placeholder="0.00" min="0" step="0.01">
+            <div class="input-suffix">USDC</div>
           </div>
         </div>
+        <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="color:var(--text2)">Max Borrow</span>
+            <span style="font-weight:600">— USDC</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--text2)">Interest Rate</span>
+            <span style="font-weight:600;color:var(--accent)">8.5% APY</span>
+          </div>
+        </div>
+        <button class="btn btn-green">Borrow</button>
       </div>
     </div>
   </div>
@@ -1093,43 +1060,27 @@ nav {
   <div id="page-repay" class="app-page">
     <div class="page-header">
       <div class="page-title">Repay</div>
-      <div class="page-sub">Repay debt and manage your position</div>
+      <div class="page-sub">Repay your outstanding debt</div>
     </div>
-    <div class="split-grid">
-      <div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">Repay Debt</div></div>
-          <div class="card-body">
-            <div class="pos-item" style="margin-bottom:12px">
-              <div class="pos-item-label">Outstanding Debt</div>
-              <div class="pos-item-value" id="repay-debt" style="color:var(--red)">—</div>
-            </div>
-            <div class="form-group">
-              <div class="form-label">
-                Amount to Repay
-                <span class="form-hint" id="repay-max-hint"></span>
-              </div>
-              <div class="input-wrap">
-                <input class="input" type="number" id="repay-amount" placeholder="0.0" step="0.001">
-                <span class="input-suffix">cWETH</span>
-              </div>
-            </div>
-            <button class="btn btn-green" id="repay-btn" onclick="handleRepay()">Repay Debt</button>
-          </div>
-        </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Repay Debt</div>
       </div>
-      <div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">Close Position</div></div>
-          <div class="card-body">
-            <div class="alert alert-warn">You must repay all debt before closing your position.</div>
-            <div class="pos-item" style="margin-bottom:16px">
-              <div class="pos-item-label">Collateral to Return</div>
-              <div class="pos-item-value" id="repay-collateral">—</div>
-            </div>
-            <button class="btn btn-red" id="close-pos-btn" onclick="handleClosePosition()">Close Position</button>
+      <div class="card-body">
+        <div style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;font-size:12px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--text2)">Outstanding Debt</span>
+            <span style="font-weight:600;color:var(--red)">— USDC</span>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Amount to Repay</label>
+          <div class="input-wrap">
+            <input type="number" class="input" placeholder="0.00" min="0" step="0.01">
+            <div class="input-suffix">USDC</div>
+          </div>
+        </div>
+        <button class="btn btn-yellow">Repay Debt</button>
       </div>
     </div>
   </div>
@@ -1138,52 +1089,40 @@ nav {
   <div id="page-markets" class="app-page">
     <div class="page-header">
       <div class="page-title">Markets</div>
-      <div class="page-sub">Protocol overview</div>
+      <div class="page-sub">Protocol statistics and market data</div>
     </div>
-    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
-      <div class="metric">
-        <div class="metric-label">Pool Liquidity</div>
-        <div class="metric-value" id="mkt-pool" style="color:var(--green)">—</div>
-        <div class="metric-sub">Available cWETH</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Open Positions</div>
-        <div class="metric-value" id="mkt-positions">—</div>
-        <div class="metric-sub">Active borrowers</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">ETH Price</div>
-        <div class="metric-value" id="mkt-price" style="color:var(--accent)">$—</div>
-        <div class="metric-sub">Live from CoinGecko</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Protocol Parameters</div></div>
-      <div class="card-body">
-        <div class="split-grid">
-          <div>
-            <div class="pos-item"><div class="pos-item-label">Max LTV</div><div class="pos-item-value">66%</div></div>
-            <div class="pos-item"><div class="pos-item-label">Liquidation Threshold</div><div class="pos-item-value">150%</div></div>
-            <div class="pos-item"><div class="pos-item-label">Liquidation Bonus</div><div class="pos-item-value">5%</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">cWETH Market</div>
+          <span class="badge badge-green">Active</span>
+        </div>
+        <div class="card-body">
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Total Collateral</div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent)">— ETH</div>
           </div>
           <div>
-            <div class="pos-item"><div class="pos-item-label">Collateral Token</div><div class="pos-item-value" style="font-size:12px;font-family:'Geist Mono',monospace">cWETH</div></div>
-            <div class="pos-item"><div class="pos-item-label">Debt Token</div><div class="pos-item-value" style="font-size:12px;font-family:'Geist Mono',monospace">cWETH</div></div>
-            <div class="pos-item"><div class="pos-item-label">Network</div><div class="pos-item-value">Sepolia</div></div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Collateral Factor</div>
+            <div style="font-size:18px;font-weight:600">75%</div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Contracts</div></div>
-      <div class="card-body">
-        <div class="pos-item">
-          <div class="pos-item-label">VeilLending</div>
-          <a href="https://sepolia.etherscan.io/address/0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB" target="_blank" style="color:var(--accent);font-family:'Geist Mono',monospace;font-size:11px;text-decoration:none">0xa30B...179d ↗</a>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">USDC Market</div>
+          <span class="badge badge-green">Active</span>
         </div>
-        <div class="pos-item">
-          <div class="pos-item-label">cWETHMock</div>
-          <a href="https://sepolia.etherscan.io/address/0x46208622DA27d91db4f0393733C8BA082ed83158" target="_blank" style="color:var(--accent2);font-family:'Geist Mono',monospace;font-size:11px;text-decoration:none">0x4620...3158 ↗</a>
+        <div class="card-body">
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Total Borrowed</div>
+            <div style="font-size:22px;font-weight:700;color:var(--red)">— USDC</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Borrow APY</div>
+            <div style="font-size:18px;font-weight:600;color:var(--accent)">8.5%</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1191,833 +1130,7 @@ nav {
 
 </div>
 
-<!-- TOAST CONTAINER -->
-<div id="toast-container"></div>
-
-<script>
-// ─────────────────────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────────────────────
-const CONFIG = {
-  CHAIN_ID: '0xaa36a7',
-  CHAIN_NAME: 'Sepolia Testnet',
-  RPC_URL: 'https://ethereum-sepolia-rpc.publicnode.com',
-  CONTRACT: '0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB',
-  CWETH: '0x46208622DA27d91db4f0393733C8BA082ed83158',
-  CWETH_DECIMALS: 8,
-  BACKEND: 'https://veil-backend-2gki.onrender.com',
-};
-
-const CONTRACT_ABI = [
-  "function openPosition(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
-  "function addCollateral(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
-  "function borrow(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
-  "function repay(bytes32 encryptedAmount, bytes calldata inputProof, uint256 plainAmount) external",
-  "function closePosition() external",
-  "function liquidate(address target) external",
-  "function hasPosition(address) external view returns (bool)",
-  "function getPositionMeta(address) external view returns (bool exists, uint256 openedAt, uint256 collateralPlain, uint256 debtPlain)",
-  "function getStats() external view returns (uint256 positions, uint256 pool)",
-  "function collateralToken() external view returns (address)",
-];
-
-const CWETH_ABI = [
-  "function confidentialBalanceOf(address) external view returns (bytes32)",
-];
-
-// ─────────────────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────────────────
-const state = {
-  connected: false,
-  address: null,
-  provider: null,
-  signer: null,
-  contract: null,
-  hasPosition: false,
-  fhevmInstance: null,
-  sdkReady: false,
-  useBackend: true,
-  ethPrice: 3000,
-  preparedDecrypt: null,
-};
-
-// ─────────────────────────────────────────────────────────────
-// SDK INIT
-// ─────────────────────────────────────────────────────────────
-async function initSdk() {
-  setSdkStatus('loading', 'Loading FHE SDK...');
-
-  const _sdk = window.relayerSDK;
-
-  if (_sdk?.initSDK && _sdk?.createInstance) {
-    try {
-      setSdkStatus('loading', 'Initializing FHE...');
-      await _sdk.initSDK();
-      state.fhevmInstance = await _sdk.createInstance({
-        ..._sdk.SepoliaConfig,
-        network: window.ethereum || 'https://ethereum-sepolia-rpc.publicnode.com',
-      });
-      state.sdkReady = true;
-      state.useBackend = false;
-      setSdkStatus('ready', 'FHE SDK ready');
-      console.log('FHE SDK initialized ✅');
-      return;
-    } catch(e) {
-      console.warn('Browser SDK failed:', e.message);
-    }
-  } else {
-    console.warn('window.relayerSDK not found');
-  }
-
-  // Fallback to backend
-  try {
-    const res = await fetch(`${CONFIG.BACKEND}/health`);
-    const data = await res.json();
-    if (data.status === 'ok') {
-      state.sdkReady = true;
-      state.useBackend = true;
-      setSdkStatus('ready', 'FHE backend ready');
-    } else {
-      throw new Error('Backend unhealthy');
-    }
-  } catch(e) {
-    setSdkStatus('error', 'FHE unavailable');
-    state.sdkReady = false;
-  }
-}
-
-
-async function wakeBackend() {
-  try { await fetch(`${CONFIG.BACKEND}/health`); } catch(e) {}
-}
-
-
-
-function setSdkStatus(status, text) {
-  const dot = document.querySelector('#sdk-status .sdk-dot');
-  const txt = document.getElementById('sdk-status-text');
-  if (dot) { dot.className = 'sdk-dot ' + status; }
-  if (txt) txt.textContent = text;
-}
-
-// ─────────────────────────────────────────────────────────────
-// ENCRYPT INPUT
-// ─────────────────────────────────────────────────────────────
-async function encryptAmount(amountWei) {
-  if (!state.sdkReady) {
-    throw new Error('FHE not ready. Please wait and try again.');
-  }
-
-  // Use browser SDK if available
-  if (!state.useBackend && state.fhevmInstance) {
-    try {
-      const input = await state.fhevmInstance.createEncryptedInput(CONFIG.CONTRACT, state.address);
-      input.add64(BigInt(amountWei.toString()));
-      const encrypted = await input.encrypt();
-      return {
-        handle: encrypted.handles[0],
-        proof: encrypted.inputProof,
-      };
-    } catch(e) {
-      console.warn('Browser SDK encrypt failed, falling back to backend:', e.message);
-    }
-  }
-
-  // Use backend
-  const res = await fetch(`${CONFIG.BACKEND}/encrypt`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      amount: amountWei.toString(),
-      contractAddress: CONFIG.CONTRACT,
-      userAddress: state.address,
-    }),
-  });
-
-  const data = await res.json();
-  if (!data.success) throw new Error(data.error || 'Encryption failed');
-
-  return {
-    handle: data.handle,
-    proof: data.inputProof,
-  };
-}
-
-// Show cWETH balance using browser SDK user decryption
-
-async function prepareDecrypt() {
-  if (!state.address) return;
-  try {
-    const handle = await new ethers.Contract(CONFIG.CWETH, [
-      "function confidentialBalanceOf(address) external view returns (bytes32)"
-    ], state.provider).confidentialBalanceOf(state.address);
-
-    if (!handle || handle === ethers.ZeroHash) return;
-
-    const res = await fetch(`${CONFIG.BACKEND}/decrypt-prepare`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        handle,
-        contractAddress: CONFIG.CWETH,
-        userAddress: ethers.getAddress(state.address)
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      state.preparedDecrypt = { ...data, handle };
-      console.log('Decrypt prepared');
-    }
-  } catch(e) {
-    console.warn('prepareDecrypt failed:', e.message);
-  }
-}
-
-async function loadCwethBalance() {
-  if (!state.connected || !state.address || !state.provider) return;
-  const btn = document.getElementById('show-balance-btn');
-
-  // Show modal immediately
-  setText('balance-modal-value', '...');
-  setText('balance-modal-usd', 'Sign the wallet popup to decrypt');
-  openModal('balance-modal');
-
-  try {
-    // Use pre-prepared data if available, else fetch now
-    let prepData = state.preparedDecrypt;
-    let handle;
-
-    if (!prepData) {
-      handle = await new ethers.Contract(CONFIG.CWETH, [
-        "function confidentialBalanceOf(address) external view returns (bytes32)"
-      ], state.provider).confidentialBalanceOf(state.address);
-
-      if (!handle || handle === ethers.ZeroHash) {
-        setText('balance-modal-value', '0.0000');
-        setText('balance-modal-usd', '≈ $0 USD');
-        if (btn) btn.textContent = '0 cWETH';
-        return;
-      }
-
-      const checksumAddress = ethers.getAddress(state.address);
-      const res = await fetch(`${CONFIG.BACKEND}/decrypt-prepare`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: checksumAddress }),
-      });
-      prepData = await res.json();
-      if (!prepData.success) throw new Error(prepData.error);
-      prepData.handle = handle;
-    }
-
-    handle = prepData.handle;
-    const checksumAddress = ethers.getAddress(state.address);
-    const { keypair, eip712, startTimestamp, durationDays } = prepData;
-
-    // Sign EIP712 — this is the wallet popup
-    setText('balance-modal-usd', 'Waiting for wallet signature...');
-    const signature = await state.signer.signTypedData(
-      eip712.domain,
-      { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
-      eip712.message,
-    );
-
-    // Step 3: Backend decrypts
-    const decRes = await fetch(`${CONFIG.BACKEND}/decrypt-balance`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: checksumAddress, signature, keypair, startTimestamp, durationDays }),
-    });
-    const decData = await decRes.json();
-    if (!decData.success) throw new Error(decData.error);
-
-    clearInterval(timer);
-    const balance = parseFloat(ethers.formatUnits(BigInt(decData.balance), CONFIG.CWETH_DECIMALS)).toFixed(4);
-    setText('deposit-balance-hint', `Balance: ${balance} cWETH`);
-    if (btn) btn.style.display = 'none';
-
-  } catch(e) {
-    clearInterval(timer);
-    console.error('Balance decrypt failed:', e);
-    showToast('Balance decrypt failed: ' + e.message?.slice(0,50), true);
-    if (btn) btn.textContent = 'Show balance';
-  }
-}
-
-
-async function handleDeposit() {
-  const amount = parseFloat(document.getElementById('deposit-amount').value);
-  if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
-  if (!state.connected) return showToast('Connect wallet first', true);
-
-  const btn = document.getElementById('deposit-btn');
-  const isAddCollateral = state.hasPosition;
-  const label = isAddCollateral ? 'Add Collateral' : 'Open Position';
-
-  setLoading(btn, true, 'Checking approval...');
-
-  try {
-    // Auto-approve if not already approved
-    const cweth = new ethers.Contract(CONFIG.CWETH, [
-      "function isOperator(address account, address operator) external view returns (bool)",
-      "function setOperator(address operator, uint48 until) external",
-    ], state.signer);
-
-    const isApproved = await cweth.isOperator(state.address, CONFIG.CONTRACT);
-    if (!isApproved) {
-      setLoading(btn, true, 'Approving cWETH...');
-      const until = Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60);
-      const approveTx = await cweth.setOperator(CONFIG.CONTRACT, until);
-      await approveTx.wait();
-    }
-  } catch(e) {
-    setLoading(btn, false, isAddCollateral ? 'Add Collateral' : 'Deposit & Open Position');
-    return showToast('Approval failed: ' + cleanError(e), true);
-  }
-
-  addTx('pending', label, `${amount} cWETH`);
-  showFheModal(label, `Encrypting ${amount} cWETH`);
-
-  try {
-    const amountWei = ethers.parseUnits(amount.toString(), CONFIG.CWETH_DECIMALS);
-    setFheStep(1, 'done');
-
-    const { handle, proof } = await encryptAmount(amountWei);
-    setFheStep(2, 'done');
-
-    const gasOpts = { gasLimit: 1000000 };
-    let tx;
-    if (isAddCollateral) {
-      tx = await state.contract.addCollateral(handle, proof, amountWei, gasOpts);
-    } else {
-      tx = await state.contract.openPosition(handle, proof, amountWei, gasOpts);
-    }
-    setFheStep(3, 'done');
-
-    updateLastTx('pending', 'Confirming...');
-    await tx.wait();
-    setFheStep(4, 'done');
-
-    hideFheModal();
-    updateLastTx('success', `${label} — ${amount} cWETH`);
-    state.hasPosition = true;
-    showToast(`${label} successful`);
-    loadPosition();
-    loadWalletBalance();
-
-  } catch(e) {
-    hideFheModal();
-    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
-    showToast(cleanError(e), true);
-  } finally {
-    setLoading(btn, false, isAddCollateral ? 'Add Collateral' : 'Deposit & Open Position');
-  }
-}
-
-async function handleBorrow() {
-  const amount = parseFloat(document.getElementById('borrow-amount').value);
-  if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
-  if (!state.hasPosition) return showToast('Open a position first', true);
-
-  const btn = document.getElementById('borrow-btn');
-
-  // Check LTV limit before proceeding
-  try {
-    const [, , collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
-    const collEth = parseFloat(ethers.formatUnits(collateralPlain, CONFIG.CWETH_DECIMALS));
-    const debtEth = parseFloat(ethers.formatUnits(debtPlain, CONFIG.CWETH_DECIMALS));
-    const maxBorrow = collEth * 0.66;
-    const remaining = maxBorrow - debtEth;
-    if (amount > remaining) {
-      return showToast(`Exceeds borrow limit. Max remaining: ${remaining.toFixed(4)} cWETH`, true);
-    }
-  } catch(e) {}
-
-  setLoading(btn, true, 'Processing...');
-  addTx('pending', 'Borrow', `${amount} cWETH`);
-  showFheModal('Borrow', `Encrypting ${amount} cWETH borrow`);
-
-  try {
-    const amountWei = ethers.parseUnits(amount.toString(), CONFIG.CWETH_DECIMALS);
-    setFheStep(1, 'done');
-
-    const { handle, proof } = await encryptAmount(amountWei);
-    setFheStep(2, 'done');
-
-    const tx = await state.contract.borrow(handle, proof, amountWei, { gasLimit: 1000000 });
-    setFheStep(3, 'done');
-
-    updateLastTx('pending', 'Confirming...');
-    await tx.wait();
-    setFheStep(4, 'done');
-
-    hideFheModal();
-    updateLastTx('success', `Borrowed ${amount} cWETH`);
-    showToast(`Borrowed ${amount} cWETH`);
-    await loadPosition();
-    loadStats();
-    loadWalletBalance();
-    updateBorrowBar();
-
-  } catch(e) {
-    hideFheModal();
-    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
-    showToast(cleanError(e), true);
-  } finally {
-    setLoading(btn, false, 'Borrow');
-  }
-}
-
-async function handleRepay() {
-  const amount = parseFloat(document.getElementById('repay-amount').value);
-  if (!amount || amount <= 0) return showToast('Enter a valid amount', true);
-  if (!state.hasPosition) return showToast('No open position', true);
-
-  const btn = document.getElementById('repay-btn');
-  setLoading(btn, true, 'Processing...');
-  addTx('pending', 'Repay', `${amount} cWETH`);
-  showFheModal('Repay Debt', `Encrypting ${amount} cWETH repayment`);
-
-  try {
-    const amountWei = ethers.parseUnits(amount.toString(), CONFIG.CWETH_DECIMALS);
-    setFheStep(1, 'done');
-
-    const { handle, proof } = await encryptAmount(amountWei);
-    setFheStep(2, 'done');
-
-    const tx = await state.contract.repay(handle, proof, amountWei, { gasLimit: 1000000 });
-    setFheStep(3, 'done');
-
-    updateLastTx('pending', 'Confirming...');
-    await tx.wait();
-    setFheStep(4, 'done');
-
-    hideFheModal();
-    updateLastTx('success', `Repaid ${amount} cWETH`);
-    showToast(`Repaid ${amount} cWETH`);
-    loadPosition();
-    loadWalletBalance();
-
-  } catch(e) {
-    hideFheModal();
-    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
-    showToast(cleanError(e), true);
-  } finally {
-    setLoading(btn, false, 'Repay Debt');
-  }
-}
-
-async function handleClosePosition() {
-  if (!state.hasPosition) return showToast('No open position', true);
-
-  const btn = document.getElementById('close-btn') || document.getElementById('close-pos-btn');
-  setLoading(btn, true, 'Closing...');
-  addTx('pending', 'Close Position', 'Withdrawing collateral');
-
-  try {
-    const tx = await state.contract.closePosition();
-    updateLastTx('pending', 'Confirming...');
-    await tx.wait();
-    updateLastTx('success', 'Position closed');
-    showToast('Position closed — collateral returned');
-    state.hasPosition = false;
-    loadPosition();
-    loadWalletBalance();
-    showPage('dashboard');
-  } catch(e) {
-    updateLastTx('fail', e.message?.slice(0,60) || 'Failed');
-    showToast(cleanError(e), true);
-  } finally {
-    setLoading(btn, false, 'Close Position');
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// FHE MODAL
-// ─────────────────────────────────────────────────────────────
-let fheTimer = null;
-let fheStart = null;
-
-function showFheModal(title, sub) {
-  document.getElementById('fhe-modal-title').textContent = title;
-  document.getElementById('fhe-modal-sub').textContent = sub;
-  [1,2,3,4].forEach(i => { document.getElementById(`fhe-step-${i}`).className = 'fhe-step'; });
-  setFheStep(1, 'active');
-  document.getElementById('fhe-timer').textContent = '0s elapsed';
-  fheStart = Date.now();
-  fheTimer = setInterval(() => {
-    setText('fhe-timer', `${Math.round((Date.now()-fheStart)/1000)}s elapsed`);
-  }, 1000);
-  document.getElementById('fhe-modal').classList.add('open');
-}
-
-function setFheStep(num, status) {
-  const el = document.getElementById(`fhe-step-${num}`);
-  if (!el) return;
-  el.className = 'fhe-step ' + status;
-  const icon = el.querySelector('.fhe-step-icon');
-  if (status === 'active' && icon) icon.textContent = '⏳';
-  else if (status === 'done' && icon) { icon.textContent = '✅'; if (num < 4) setFheStep(num+1, 'active'); }
-  else if (status === 'error' && icon) icon.textContent = '❌';
-}
-
-function hideFheModal() {
-  if (fheTimer) clearInterval(fheTimer);
-  document.getElementById('fhe-modal').classList.remove('open');
-}
-
-// ─────────────────────────────────────────────────────────────
-// TX FEED
-// ─────────────────────────────────────────────────────────────
-let txList = [];
-
-function addTx(status, label, detail) {
-  txList.unshift({ status, label, detail });
-  if (txList.length > 8) txList.pop();
-  renderTxFeed();
-}
-
-function updateLastTx(status, detail) {
-  if (txList.length > 0) { txList[0].status = status; txList[0].detail = detail; }
-  renderTxFeed();
-}
-
-function renderTxFeed() {
-  const feed = document.getElementById('tx-feed');
-  document.getElementById('tx-count').textContent = txList.length;
-  if (!txList.length) { feed.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;padding:16px">No transactions yet</div>'; return; }
-  feed.innerHTML = txList.map(tx => `
-    <div class="tx-item">
-      <div class="tx-dot ${tx.status}"></div>
-      <div class="tx-label">${tx.label}</div>
-      <div class="tx-status">${tx.detail}</div>
-    </div>
-  `).join('');
-}
-
-// ─────────────────────────────────────────────────────────────
-// NAVIGATION
-// ─────────────────────────────────────────────────────────────
-function showPage(page) {
-  document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-  document.getElementById(`page-${page}`)?.classList.add('active');
-  document.getElementById(`nl-${page}`)?.classList.add('active');
-  if (page === 'borrow') updateBorrowBar();
-
-}
-
-function toggleMobileNav() {
-  document.getElementById('mobile-nav').classList.toggle('open');
-}
-
-function updateBorrowBar() {
-  const amount = parseFloat(document.getElementById('borrow-amount')?.value) || 0;
-  const avail = parseFloat(document.getElementById('borrow-available')?.textContent) || 0;
-  const pct = avail > 0 ? Math.min((amount/avail)*100, 100) : 0;
-  setText('borrow-limit-pct', `${pct.toFixed(0)}%`);
-  const bar = document.getElementById('borrow-limit-bar');
-  if (bar) bar.style.width = pct + '%';
-}
-
-// ─────────────────────────────────────────────────────────────
-// MODALS
-// ─────────────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id)?.classList.add('open'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
-
-// ─────────────────────────────────────────────────────────────
-// UTILS
-// ─────────────────────────────────────────────────────────────
-function setText(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
-
-function shortAddr(addr) {
-  return addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : '';
-}
-
-function copyAddress() {
-  if (state.address) navigator.clipboard.writeText(state.address).then(() => showToast('Address copied'));
-}
-
-function setLoading(btn, loading, text) {
-  if (!btn) return;
-  btn.disabled = loading;
-  btn.textContent = text;
-}
-
-function showToast(msg, isError = false) {
-  const container = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = 'toast' + (isError ? ' toast-error' : '');
-  let cleanMsg = msg;
-  if (msg.includes('user rejected')) cleanMsg = 'Transaction rejected';
-  if (msg.includes('position already')) cleanMsg = 'Position already open — use Add Collateral';
-  if (msg.includes('repay debt')) cleanMsg = 'Repay debt first before closing';
-  if (msg.includes('exceeds debt')) cleanMsg = 'Amount exceeds your debt';
-  el.textContent = cleanMsg.slice(0, 100);
-  container.appendChild(el);
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, isError ? 5000 : 3500);
-}
-
-function cleanError(e) {
-  const msg = e?.reason || e?.message || 'Transaction failed';
-  return msg.slice(0, 100);
-}
-
-async function addCwethToWallet() {
-  try {
-    const provider = window.ethereum || window.okxwallet;
-    await provider.request({
-      method: 'wallet_watchAsset',
-      params: { type: 'ERC20', options: { address: CONFIG.CWETH, symbol: 'cWETH', decimals: 18 } }
-    });
-  } catch(e) {
-    showToast('Add manually: ' + CONFIG.CWETH);
-    navigator.clipboard.writeText(CONFIG.CWETH).catch(() => {});
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────────────────────
-
-
-let liveEthPrice = 3000;
-
-async function fetchEthPrice() {
-  const apis = [
-    { url: 'https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD', parse: d => d?.USD },
-    { url: 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', parse: d => parseFloat(d?.price) },
-    { url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot', parse: d => parseFloat(d?.data?.amount) },
-  ];
-  for (const api of apis) {
-    try {
-      const res = await fetch(api.url);
-      const data = await res.json();
-      const price = api.parse(data);
-      if (price && price > 100) {
-        liveEthPrice = Math.round(price);
-        updatePriceDisplays();
-        return;
-      }
-    } catch(e) {}
-  }
-}
-
-function updatePriceDisplays() {
-  const p = `$${liveEthPrice.toLocaleString()}`;
-  ['nav-eth-price','ls-price','mkt-price'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = p;
-  });
-}
-
-async function loadStats() {
-  try {
-    const [positions, pool] = await state.contract.getStats();
-    const poolEth = parseFloat(ethers.formatUnits(pool, CONFIG.CWETH_DECIMALS)).toFixed(2);
-    setText('ls-positions', positions.toString());
-    setText('mkt-positions', positions.toString());
-    setText('ls-pool', `${poolEth} cWETH`);
-    setText('mkt-pool', `${poolEth} cWETH`);
-    setText('borrow-pool', `${poolEth} cWETH`);
-  } catch(e) {}
-}
-
-async function loadWalletBalance() {
-  try {
-    if (!state.provider || !state.address) return;
-    const bal = await state.provider.getBalance(state.address);
-    const ethBal = parseFloat(ethers.formatEther(bal)).toFixed(4);
-    setText('nav-balance', `${ethBal} ETH`);
-  } catch(e) {}
-}
-
-async function onConnected(address) {
-  state.address = address;
-  state.connected = true;
-  state.provider = new ethers.BrowserProvider(window.ethereum);
-  state.signer = await state.provider.getSigner();
-  state.contract = new ethers.Contract(CONFIG.CONTRACT, CONTRACT_ABI, state.signer);
-
-  document.getElementById('nav-connect-btn').style.display = 'none';
-  const chip = document.getElementById('address-chip');
-  chip.style.display = 'block';
-  chip.textContent = shortAddr(address);
-  document.getElementById('nav-pill').style.display = 'flex';
-  document.getElementById('account-full-addr').textContent = address;
-  document.getElementById('account-etherscan').href = `https://sepolia.etherscan.io/address/${address}`;
-  document.getElementById('mobile-account-btn').style.display = 'block';
-
-  showPage('dashboard');
-  loadPosition();
-  loadStats();
-  loadWalletBalance();
-  if (!state.sdkReady) initSdk();
-  setTimeout(prepareDecrypt, 2000);
-}
-
-function disconnectWallet() {
-  state.connected = false; state.address = null;
-  state.provider = null; state.signer = null;
-  state.contract = null; state.hasPosition = false;
-  document.getElementById('nav-connect-btn').style.display = 'block';
-  document.getElementById('address-chip').style.display = 'none';
-  document.getElementById('nav-pill').style.display = 'none';
-  document.getElementById('mobile-account-btn').style.display = 'none';
-  closeModal('account-modal');
-  showPage('connect');
-  showToast('Wallet disconnected');
-}
-
-function showWrongNetwork() { document.getElementById('wrong-network').style.display = 'flex'; }
-function hideWrongNetwork() { document.getElementById('wrong-network').style.display = 'none'; }
-
-async function switchToSepolia() {
-  try {
-    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
-    hideWrongNetwork();
-  } catch(e) {
-    if (e.code === 4902) {
-      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 } }] });
-      hideWrongNetwork();
-    }
-  }
-}
-
-async function loadPosition() {
-  if (!state.contract || !state.address) return;
-  try {
-    const hasPosOnchain = await state.contract.hasPosition(state.address);
-    state.hasPosition = hasPosOnchain;
-
-    const noPos = document.getElementById('dash-no-pos');
-    const hasPos = document.getElementById('dash-has-pos');
-
-    if (hasPosOnchain) {
-      noPos.style.display = 'none';
-      hasPos.style.display = 'block';
-
-      const [, openedAt, collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
-      const collEth = parseFloat(ethers.formatUnits(collateralPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
-      const debtEth = parseFloat(ethers.formatUnits(debtPlain, CONFIG.CWETH_DECIMALS)).toFixed(4);
-      const maxBorrow = (parseFloat(collEth) * 0.66).toFixed(4);
-      const maxBorrowUsd = (parseFloat(maxBorrow) * liveEthPrice).toFixed(0);
-      const collUsd = (parseFloat(collEth) * liveEthPrice).toFixed(0);
-      const debtUsd = (parseFloat(debtEth) * liveEthPrice).toFixed(0);
-      const liqRatio = parseFloat(debtEth) > 0 ? (parseFloat(debtEth) * 1.5) / parseFloat(collEth) : null;
-      const liqPrice = liqRatio ? (liqRatio * liveEthPrice).toFixed(0) : null;
-
-      setText('dash-collateral', `${collEth} cWETH`);
-      setText('dash-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
-      setText('dash-debt', `${debtEth} cWETH`);
-      setText('dash-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
-      setText('dash-max-borrow', `${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
-      setText('dash-liq-price', liqPrice ? `$${Number(liqPrice).toLocaleString()}` : 'Borrow first');
-
-      setText('pos-collateral', `${collEth} cWETH`);
-      setText('pos-collateral-usd', `$${Number(collUsd).toLocaleString()}`);
-      setText('pos-debt', `${debtEth} cWETH`);
-      setText('pos-debt-usd', `$${Number(debtUsd).toLocaleString()}`);
-      const date = new Date(Number(openedAt) * 1000);
-      setText('pos-opened', date.toLocaleDateString());
-
-      const depBtn = document.getElementById('deposit-btn');
-      if (depBtn) depBtn.textContent = 'Add Collateral';
-      const depTitle = document.getElementById('deposit-card-title');
-      if (depTitle) depTitle.textContent = 'Add Collateral';
-
-      setText('borrow-available', `${maxBorrow} cWETH`);
-      setText('borrow-max-hint', `Max: ${maxBorrow} ($${Number(maxBorrowUsd).toLocaleString()})`);
-      setText('repay-debt', `${debtEth} cWETH`);
-      setText('repay-max-hint', `Max: ${debtEth} cWETH`);
-      setText('repay-collateral', `${collEth} cWETH`);
-
-    } else {
-      noPos.style.display = 'block';
-      hasPos.style.display = 'none';
-      const depBtn = document.getElementById('deposit-btn');
-      if (depBtn) depBtn.textContent = 'Deposit & Open Position';
-      const depTitle = document.getElementById('deposit-card-title');
-      if (depTitle) depTitle.textContent = 'Open Position';
-      ['dash-collateral','dash-debt','dash-max-borrow','dash-liq-price'].forEach(id => setText(id, '—'));
-    }
-  } catch(e) {
-    console.error('loadPosition:', e);
-  }
-}
-
-async function handleFaucet() {
-  if (!state.connected) return showToast('Connect wallet first', true);
-  const btn = document.getElementById('faucet-btn');
-  setLoading(btn, true, 'Requesting...');
-  try {
-    const res = await fetch(`${CONFIG.BACKEND}/faucet`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: state.address }),
-    });
-    const data = await res.json();
-    if (data.success) showToast('0.5 cWETH sent to your wallet');
-    else showToast(data.error || 'Faucet failed', true);
-  } catch(e) {
-    showToast('Faucet request failed', true);
-  } finally {
-    setLoading(btn, false, 'Get 0.5 cWETH (Testnet Faucet)');
-  }
-}
-
-async function connectWallet() {
-  try {
-    if (!window.ethereum) return showToast('No wallet detected', true);
-
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.CHAIN_ID }] });
-    } catch(e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{ chainId: CONFIG.CHAIN_ID, chainName: CONFIG.CHAIN_NAME, rpcUrls: [CONFIG.RPC_URL], nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 }, blockExplorerUrls: ['https://sepolia.etherscan.io'] }]
-        });
-      }
-    }
-
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId !== CONFIG.CHAIN_ID) { showWrongNetwork(); return; }
-
-    await onConnected(accounts[0]);
-
-    window.ethereum.on('accountsChanged', accs => { if (accs.length === 0) disconnectWallet(); else onConnected(accs[0]); });
-    window.ethereum.on('chainChanged', id => { if (id !== CONFIG.CHAIN_ID) showWrongNetwork(); else hideWrongNetwork(); });
-
-  } catch(e) {
-    showToast(e.message?.slice(0,80) || 'Connection failed', true);
-  }
-}
-
-async function tryReconnect() {
-  if (!window.ethereum) return;
-  try {
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId !== CONFIG.CHAIN_ID) return;
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    if (accounts?.length > 0) await onConnected(accounts[0]);
-  } catch(e) {}
-}
-
-window.addEventListener('load', () => {
-  tryReconnect();
-  fetchEthPrice();
-  wakeBackend();
-  setInterval(wakeBackend, 240000);
-});
-</script>
-
+<!-- SCRIPTS -->
+<script src="app.js"></script>
 </body>
 </html>
-
