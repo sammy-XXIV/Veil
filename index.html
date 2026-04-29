@@ -1202,7 +1202,7 @@ async function initSdk() {
     });
   }
 
-  const _sdk = window.__zamaSDK;
+  const _sdk = window.RelayerSDK || window.relayerSDK || window.__zamaSDK;
 
   if (_sdk?.initSDK && _sdk?.createInstance) {
     try {
@@ -1221,7 +1221,7 @@ async function initSdk() {
       console.warn('Browser SDK failed:', e.message);
     }
   } else {
-    console.log('window.relayerSDK not found, falling back to backend');
+    console.log('SDK not found, falling back to backend. Available globals:', Object.keys(window).filter(k=>k.toLowerCase().includes('relayer')));
   }
 
   // Fallback to backend
