@@ -1452,11 +1452,12 @@ async function handleDeposit() {
     const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
+    const gasOpts = { gasLimit: 500000 };
     let tx;
     if (isAddCollateral) {
-      tx = await state.contract.addCollateral(handle, proof, amountWei);
+      tx = await state.contract.addCollateral(handle, proof, amountWei, gasOpts);
     } else {
-      tx = await state.contract.openPosition(handle, proof, amountWei);
+      tx = await state.contract.openPosition(handle, proof, amountWei, gasOpts);
     }
     setFheStep(3, 'done');
 
@@ -1510,7 +1511,7 @@ async function handleBorrow() {
     const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const tx = await state.contract.borrow(handle, proof, amountWei);
+    const tx = await state.contract.borrow(handle, proof, amountWei, { gasLimit: 500000 });
     setFheStep(3, 'done');
 
     updateLastTx('pending', 'Confirming...');
@@ -1551,7 +1552,7 @@ async function handleRepay() {
     const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const tx = await state.contract.repay(handle, proof, amountWei);
+    const tx = await state.contract.repay(handle, proof, amountWei, { gasLimit: 500000 });
     setFheStep(3, 'done');
 
     updateLastTx('pending', 'Confirming...');
