@@ -9,8 +9,13 @@
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 <!-- Zama Relayer SDK -->
-<!-- Zama Relayer SDK v0.3.0-8 — exposes window.fhevm -->
-<script src="https://cdn.zama.org/relayer-sdk-js/0.3.0-8/relayer-sdk-js.umd.cjs" type="text/javascript"></script>
+<!-- Zama Relayer SDK v0.4.2 via jsDelivr -->
+<script type="module">
+  import { initSDK, createInstance, SepoliaConfig } from 'https://cdn.jsdelivr.net/npm/@zama-fhe/relayer-sdk@0.4.2/bundle';
+  window.__zamaSDK = { initSDK, createInstance, SepoliaConfig };
+  window.__zamaSDKLoaded = true;
+  console.log('Zama SDK 0.4.2 loaded');
+</script>
 
 <style>
 :root {
@@ -1194,7 +1199,15 @@ const state = {
 async function initSdk() {
   setSdkStatus('loading', 'Loading FHE SDK...');
 
-  const _sdk = window.relayerSDK;
+  // Wait for ESM module
+  if (!window.__zamaSDKLoaded) {
+    await new Promise(resolve => {
+      const t = setTimeout(resolve, 5000);
+      const i = setInterval(() => { if (window.__zamaSDKLoaded) { clearInterval(i); clearTimeout(t); resolve(); } }, 100);
+    });
+  }
+
+  const _sdk = window.__zamaSDK;
 
   if (_sdk?.initSDK && _sdk?.createInstance) {
     try {
