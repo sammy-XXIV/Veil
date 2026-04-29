@@ -8,8 +8,13 @@
 
 <!-- ethers.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-<!-- Zama Relayer SDK — self-hosted UMD bundle -->
-<script src="relayer-sdk.js" type="text/javascript"></script>
+<!-- Zama Relayer SDK -->
+<script type="module">
+  import { initSDK, createInstance, SepoliaConfig } from 'https://cdn.zama.org/relayer-sdk-js/0.3.0-7/relayer-sdk-js.umd.cjs';
+  window.__zamaSDK = { initSDK, createInstance, SepoliaConfig };
+  window.__zamaSDKLoaded = true;
+  console.log('Zama SDK loaded via ESM');
+</script>
 
 <style>
 :root {
@@ -1125,7 +1130,7 @@ nav {
       <div class="card-body">
         <div class="pos-item">
           <div class="pos-item-label">VeilLending</div>
-          <a href="https://sepolia.etherscan.io/address/0x6d69a00107Ed9d487904700a00E31e657dA8a392" target="_blank" style="color:var(--accent);font-family:'Geist Mono',monospace;font-size:11px;text-decoration:none">0xa30B...179d ↗</a>
+          <a href="https://sepolia.etherscan.io/address/0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB" target="_blank" style="color:var(--accent);font-family:'Geist Mono',monospace;font-size:11px;text-decoration:none">0xa30B...179d ↗</a>
         </div>
         <div class="pos-item">
           <div class="pos-item-label">cWETHMock</div>
@@ -1148,7 +1153,7 @@ const CONFIG = {
   CHAIN_ID: '0xaa36a7',
   CHAIN_NAME: 'Sepolia Testnet',
   RPC_URL: 'https://ethereum-sepolia-rpc.publicnode.com',
-  CONTRACT: '0x6d69a00107Ed9d487904700a00E31e657dA8a392',
+  CONTRACT: '0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB',
   CWETH: '0x46208622DA27d91db4f0393733C8BA082ed83158',
   CWETH_DECIMALS: 8,
   BACKEND: 'https://veil-backend-2gki.onrender.com',
@@ -1163,7 +1168,7 @@ const CONTRACT_ABI = [
   "function liquidate(address target) external",
   "function hasPosition(address) external view returns (bool)",
   "function getPositionMeta(address) external view returns (bool exists, uint256 openedAt, uint256 collateralPlain, uint256 debtPlain)",
-  "function getStats() external view returns (uint256)",
+  "function getStats() external view returns (uint256 positions, uint256 pool)",
   "function collateralToken() external view returns (address)",
 ];
 
@@ -1208,16 +1213,19 @@ async function initSdk() {
     });
   }
 
-  const _sdk = window.relayerSDK || window.fhevm;
+  // Wait for ESM module to load
+  await new Promise(resolve => {
+    if (window.__zamaSDKLoaded) return resolve();
+    const check = setInterval(() => { if (window.__zamaSDKLoaded) { clearInterval(check); resolve(); } }, 100);
+    setTimeout(() => { clearInterval(check); resolve(); }, 5000);
+  });
+
+  const _sdk = window.__zamaSDK || window.fhevm || window.relayerSDK;
   if (_sdk?.initSDK && _sdk?.createInstance) {
     try {
       setSdkStatus('loading', 'Initializing FHE...');
       await _sdk.initSDK();
-      const config = {
-        ..._sdk.SepoliaConfig,
-        network: window.ethereum,
-        relayerUrl: 'https://relayer.testnet.zama.org',
-      };
+      const config = { ..._sdk.SepoliaConfig, network: window.ethereum };
       state.fhevmInstance = await _sdk.createInstance(config);
       state.sdkReady = true;
       state.useBackend = false;
@@ -1225,7 +1233,7 @@ async function initSdk() {
       console.log('Browser SDK initialized successfully');
       return;
     } catch(e) {
-      console.warn('Browser SDK failed:', e.message);
+      console.warn('Browser SDK failed:', e.message, e);
     }
   } else {
     console.log('Zama SDK not loaded yet, falling back to backend');
@@ -1565,9 +1573,13 @@ async function loadPosition() {
 
 async function loadStats() {
   try {
-    const positions = await state.contract.getStats();
+    const [positions, pool] = await state.contract.getStats();
+    const poolEth = parseFloat(ethers.formatUnits(pool, CONFIG.CWETH_DECIMALS)).toFixed(2);
     setText('ls-positions', positions.toString());
     setText('mkt-positions', positions.toString());
+    setText('ls-pool', `${poolEth} cWETH`);
+    setText('mkt-pool', `${poolEth} cWETH`);
+    setText('borrow-pool', `${poolEth} cWETH`);
   } catch(e) {}
 }
 
@@ -1689,6 +1701,19 @@ async function handleBorrow() {
   if (!state.hasPosition) return showToast('Open a position first', true);
 
   const btn = document.getElementById('borrow-btn');
+
+  // Check LTV limit before proceeding
+  try {
+    const [, , collateralPlain, debtPlain] = await state.contract.getPositionMeta(state.address);
+    const collEth = parseFloat(ethers.formatUnits(collateralPlain, CONFIG.CWETH_DECIMALS));
+    const debtEth = parseFloat(ethers.formatUnits(debtPlain, CONFIG.CWETH_DECIMALS));
+    const maxBorrow = collEth * 0.66;
+    const remaining = maxBorrow - debtEth;
+    if (amount > remaining) {
+      return showToast(`Exceeds borrow limit. Max remaining: ${remaining.toFixed(4)} cWETH`, true);
+    }
+  } catch(e) {}
+
   setLoading(btn, true, 'Processing...');
   addTx('pending', 'Borrow', `${amount} cWETH`);
   showFheModal('Borrow', `Encrypting ${amount} cWETH borrow`);
