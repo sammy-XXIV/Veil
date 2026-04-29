@@ -946,7 +946,10 @@ nav {
             <div class="form-group">
               <div class="form-label">
                 Amount
-                <span class="form-hint" id="deposit-balance-hint"></span>
+                <span class="form-hint">
+                  <span id="deposit-balance-hint"></span>
+                  <button onclick="loadCwethBalance()" id="show-balance-btn" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-family:'Geist Mono',monospace;padding:0">Show balance</button>
+                </span>
               </div>
               <div class="input-wrap">
                 <input class="input" type="number" id="deposit-amount" placeholder="0.0" step="0.001" min="0.001">
@@ -1213,6 +1216,7 @@ async function initSdk() {
       const config = {
         ..._sdk.SepoliaConfig,
         network: window.ethereum,
+        relayerUrl: 'https://relayer.testnet.zama.org',
       };
       state.fhevmInstance = await _sdk.createInstance(config);
       state.sdkReady = true;
@@ -1311,7 +1315,9 @@ async function loadCwethBalance() {
 
     const handle = await cweth.confidentialBalanceOf(state.address);
     if (handle === ethers.ZeroHash) {
-      setText('deposit-balance-hint', 'cWETH Balance: 0');
+      setText('deposit-balance-hint', 'Balance: 0 cWETH');
+    const showBtn = document.getElementById('show-balance-btn');
+    if (showBtn) showBtn.style.display = 'none';
       return;
     }
 
@@ -1340,7 +1346,9 @@ async function loadCwethBalance() {
     );
     const balance = result[handle];
     const balEth = (Number(balance) / 1e18).toFixed(4);
-    setText('deposit-balance-hint', `cWETH Balance: ${balEth}`);
+    setText('deposit-balance-hint', `Balance: ${balEth} cWETH`);
+    const showBtn = document.getElementById('show-balance-btn');
+    if (showBtn) showBtn.style.display = 'none';
   } catch(e) {
     console.warn('Balance decrypt failed:', e.message);
   }
@@ -1438,7 +1446,7 @@ async function onConnected(address) {
   loadWalletBalance();
 
   // Init SDK in background
-  if (!state.sdkReady) initSdk().then(() => loadCwethBalance());
+  if (!state.sdkReady) initSdk();
 }
 
 function disconnectWallet() {
@@ -1569,7 +1577,7 @@ async function loadWalletBalance() {
     const bal = await state.provider.getBalance(state.address);
     const ethBal = parseFloat(ethers.formatEther(bal)).toFixed(4);
     setText('nav-balance', `${ethBal} ETH`);
-    setText('deposit-balance-hint', `Balance: ${ethBal} ETH`);
+    // ETH balance not shown — cWETH balance shown separately via loadCwethBalance
   } catch(e) {}
 }
 
