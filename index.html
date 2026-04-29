@@ -1205,15 +1205,16 @@ async function initSdk() {
     });
   }
 
-  if (window.fhevm?.initSDK && window.fhevm?.createInstance) {
+  const _sdk = window.relayerSDK || window.fhevm;
+  if (_sdk?.initSDK && _sdk?.createInstance) {
     try {
       setSdkStatus('loading', 'Initializing FHE...');
-      await window.fhevm.initSDK();
+      await _sdk.initSDK();
       const config = {
-        ...window.fhevm.SepoliaConfig,
+        ..._sdk.SepoliaConfig,
         network: window.ethereum,
       };
-      state.fhevmInstance = await window.fhevm.createInstance(config);
+      state.fhevmInstance = await _sdk.createInstance(config);
       state.sdkReady = true;
       state.useBackend = false;
       setSdkStatus('ready', 'FHE SDK ready');
