@@ -1239,6 +1239,7 @@ const state = {
   sdkReady: false,
   useBackend: true,
   ethPrice: 3000,
+  preparedDecrypt: null,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -1344,45 +1345,78 @@ async function encryptAmount(amountWei) {
 }
 
 // Show cWETH balance using browser SDK user decryption
+
+async function prepareDecrypt() {
+  if (!state.address) return;
+  try {
+    const handle = await new ethers.Contract(CONFIG.CWETH, [
+      "function confidentialBalanceOf(address) external view returns (bytes32)"
+    ], state.provider).confidentialBalanceOf(state.address);
+
+    if (!handle || handle === ethers.ZeroHash) return;
+
+    const res = await fetch(`${CONFIG.BACKEND}/decrypt-prepare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        handle,
+        contractAddress: CONFIG.CWETH,
+        userAddress: ethers.getAddress(state.address)
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      state.preparedDecrypt = { ...data, handle };
+      console.log('Decrypt prepared');
+    }
+  } catch(e) {
+    console.warn('prepareDecrypt failed:', e.message);
+  }
+}
+
 async function loadCwethBalance() {
   if (!state.connected || !state.address || !state.provider) return;
   const btn = document.getElementById('show-balance-btn');
-  if (btn) btn.textContent = 'Decrypting... 0s';
 
-  // Timer
-  let elapsed = 0;
-  const timer = setInterval(() => {
-    elapsed++;
-    if (btn) btn.textContent = `Decrypting... ${elapsed}s`;
-  }, 1000);
+  // Show modal immediately
+  setText('balance-modal-value', '...');
+  setText('balance-modal-usd', 'Sign the wallet popup to decrypt');
+  openModal('balance-modal');
 
   try {
-    // Read encrypted handle from cWETHMock
-    const cweth = new ethers.Contract(CONFIG.CWETH, [
-      "function confidentialBalanceOf(address) external view returns (bytes32)"
-    ], state.provider);
-    const handle = await cweth.confidentialBalanceOf(state.address);
+    // Use pre-prepared data if available, else fetch now
+    let prepData = state.preparedDecrypt;
+    let handle;
 
-    if (!handle || handle === ethers.ZeroHash) {
-      clearInterval(timer);
-      setText('balance-modal-value', '0.0000');
-      setText('balance-modal-usd', '≈ $0 USD');
-      openModal('balance-modal');
-      if (btn) btn.textContent = '0.0000 cWETH';
-      return;
+    if (!prepData) {
+      handle = await new ethers.Contract(CONFIG.CWETH, [
+        "function confidentialBalanceOf(address) external view returns (bytes32)"
+      ], state.provider).confidentialBalanceOf(state.address);
+
+      if (!handle || handle === ethers.ZeroHash) {
+        setText('balance-modal-value', '0.0000');
+        setText('balance-modal-usd', '≈ $0 USD');
+        if (btn) btn.textContent = '0 cWETH';
+        return;
+      }
+
+      const checksumAddress = ethers.getAddress(state.address);
+      const res = await fetch(`${CONFIG.BACKEND}/decrypt-prepare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: checksumAddress }),
+      });
+      prepData = await res.json();
+      if (!prepData.success) throw new Error(prepData.error);
+      prepData.handle = handle;
     }
 
-    // Step 1: Get keypair + EIP712 from backend
-    const prepRes = await fetch(`${CONFIG.BACKEND}/decrypt-prepare`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: state.address }),
-    });
-    const prepData = await prepRes.json();
-    if (!prepData.success) throw new Error(prepData.error);
-
-    // Step 2: User signs EIP712
+    handle = prepData.handle;
+    const checksumAddress = ethers.getAddress(state.address);
     const { keypair, eip712, startTimestamp, durationDays } = prepData;
+
+    // Sign EIP712 — this is the wallet popup
+    setText('balance-modal-usd', 'Waiting for wallet signature...');
     const signature = await state.signer.signTypedData(
       eip712.domain,
       { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
@@ -1393,7 +1427,7 @@ async function loadCwethBalance() {
     const decRes = await fetch(`${CONFIG.BACKEND}/decrypt-balance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: state.address, signature, keypair, startTimestamp, durationDays }),
+      body: JSON.stringify({ handle, contractAddress: CONFIG.CWETH, userAddress: checksumAddress, signature, keypair, startTimestamp, durationDays }),
     });
     const decData = await decRes.json();
     if (!decData.success) throw new Error(decData.error);
@@ -1452,7 +1486,7 @@ async function handleDeposit() {
     const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const gasOpts = { gasLimit: 500000 };
+    const gasOpts = { gasLimit: 1000000 };
     let tx;
     if (isAddCollateral) {
       tx = await state.contract.addCollateral(handle, proof, amountWei, gasOpts);
@@ -1511,7 +1545,7 @@ async function handleBorrow() {
     const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const tx = await state.contract.borrow(handle, proof, amountWei, { gasLimit: 500000 });
+    const tx = await state.contract.borrow(handle, proof, amountWei, { gasLimit: 1000000 });
     setFheStep(3, 'done');
 
     updateLastTx('pending', 'Confirming...');
@@ -1552,7 +1586,7 @@ async function handleRepay() {
     const { handle, proof } = await encryptAmount(amountWei);
     setFheStep(2, 'done');
 
-    const tx = await state.contract.repay(handle, proof, amountWei, { gasLimit: 500000 });
+    const tx = await state.contract.repay(handle, proof, amountWei, { gasLimit: 1000000 });
     setFheStep(3, 'done');
 
     updateLastTx('pending', 'Confirming...');
@@ -1824,6 +1858,7 @@ async function onConnected(address) {
   loadStats();
   loadWalletBalance();
   if (!state.sdkReady) initSdk();
+  setTimeout(prepareDecrypt, 2000);
 }
 
 function disconnectWallet() {
@@ -1985,3 +2020,4 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
