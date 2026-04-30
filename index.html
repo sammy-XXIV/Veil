@@ -238,7 +238,7 @@ nav {
 .app-page.active { display: block; }
 
 /* ── LANDING ── */
-#page-connect { max-width: 100%; padding: 0; }
+#page-connect { max-width: 100%; width: 100%; padding: 0; margin: 0; }
 
 .landing {
   min-height: calc(100vh - 60px);
@@ -732,6 +732,8 @@ nav {
   .btn-row { grid-template-columns: 1fr; }
   .landing h1 { letter-spacing: -1px; }
   .landing p { font-size: 14px; }
+  .landing { align-items: center; padding: 40px 20px; }
+  .landing-badge, .landing h1, .landing p, .landing-btns, .landing-stats { align-self: center; text-align: center; width: 100%; }
 }
 </style>
 </head>
