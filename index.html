@@ -692,6 +692,14 @@ nav {
 .limit-bar-bg { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
 .limit-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 
+/* ── BUTTON ROW ── */
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
   .nav-links { display: none; }
@@ -701,6 +709,9 @@ nav {
   .split-grid { grid-template-columns: 1fr; }
   .app-page { padding: 16px; }
   .page-wrapper { overflow-x: hidden; }
+  .landing-stats { gap: 24px; }
+  .modal { padding: 20px; }
+  .toast { white-space: normal; max-width: calc(100vw - 32px); text-align: center; }
 }
 
 @media (max-width: 480px) {
@@ -709,6 +720,11 @@ nav {
   nav { padding: 0 12px; gap: 8px; }
   .nav-logo { font-size: 18px; }
   .address-chip { font-size: 10px; padding: 5px 8px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+  .landing-stats { gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .landing-stat-value { font-size: 22px; }
+  .btn-row { grid-template-columns: 1fr; }
+  .landing h1 { letter-spacing: -1px; }
+  .landing p { font-size: 14px; }
 }
 </style>
 </head>
@@ -775,7 +791,7 @@ nav {
       <div style="font-size:10px;color:var(--text3);font-family:'Geist Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected</div>
       <div style="font-family:'Geist Mono',monospace;font-size:12px;word-break:break-all" id="account-full-addr"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div class="btn-row" style="margin-top:0;margin-bottom:10px">
       <button onclick="copyAddress();closeModal('account-modal')" class="btn btn-ghost" style="font-size:12px;padding:9px">Copy Address</button>
       <a id="account-etherscan" href="#" target="_blank" style="text-decoration:none">
         <button class="btn btn-ghost" style="font-size:12px;padding:9px;width:100%">Etherscan ↗</button>
@@ -948,7 +964,7 @@ nav {
               <div><div class="pos-item-label">Opened</div></div>
               <div><div class="pos-item-value" id="pos-opened" style="font-size:12px;color:var(--text2)">—</div></div>
             </div>
-            <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="btn-row">
               <button class="btn btn-yellow" onclick="showPage('deposit')">Add Collateral</button>
               <button class="btn btn-red" onclick="handleClosePosition()">Close Position</button>
             </div>
@@ -1091,7 +1107,7 @@ nav {
       <div class="page-title">Markets</div>
       <div class="page-sub">Protocol statistics and market data</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="split-grid">
       <div class="card">
         <div class="card-header">
           <div class="card-title">cWETH Market</div>
