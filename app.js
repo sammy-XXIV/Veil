@@ -272,21 +272,24 @@ function updateUI() {
   const connectBtn = document.getElementById('nav-connect-btn');
   const addressChip = document.getElementById('address-chip');
   const mobileAccountBtn = document.getElementById('mobile-account-btn');
-  
+  const mobileConnectBtn = document.getElementById('mobile-connect-btn');
+
   if (currentUser) {
     connectBtn.style.display = 'none';
     addressChip.style.display = 'block';
     addressChip.textContent = `${currentUser.slice(0, 6)}...${currentUser.slice(-4)}`;
-    
+
+    if (mobileConnectBtn) mobileConnectBtn.style.display = 'none';
     mobileAccountBtn.style.display = 'block';
-    
+
     document.getElementById('account-full-addr').textContent = currentUser;
     document.getElementById('account-etherscan').href = `https://sepolia.etherscan.io/address/${currentUser}`;
-    
+
     document.getElementById('nav-pill').style.display = 'flex';
   } else {
     connectBtn.style.display = 'block';
     addressChip.style.display = 'none';
+    if (mobileConnectBtn) mobileConnectBtn.style.display = 'block';
     mobileAccountBtn.style.display = 'none';
     document.getElementById('nav-pill').style.display = 'none';
     showPage('connect');

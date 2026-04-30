@@ -249,13 +249,18 @@ nav {
   text-align: center;
   padding: 40px 24px;
   position: relative;
+  overflow: hidden;
+  width: 100%;
 }
 
 .landing-glow {
   position: absolute;
   width: 600px; height: 600px;
+  max-width: 100vw;
   background: radial-gradient(circle, rgba(245,197,66,0.06) 0%, transparent 70%);
   pointer-events: none;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .landing-badge {
@@ -705,6 +710,8 @@ nav {
   .nav-links { display: none; }
   .hamburger { display: flex; }
   .nav-price-pill { display: none !important; }
+  .btn-connect { display: none; }
+  .address-chip { display: none !important; }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .split-grid { grid-template-columns: 1fr; }
   .app-page { padding: 16px; }
@@ -847,6 +854,8 @@ nav {
 
 <!-- MOBILE NAV -->
 <div class="mobile-nav" id="mobile-nav">
+  <button class="mobile-nav-link" id="mobile-connect-btn" onclick="connectWallet();toggleMobileNav()" style="color:var(--accent);font-weight:700">Connect Wallet</button>
+  <div style="height:1px;background:var(--border);margin:4px 0"></div>
   <button class="mobile-nav-link" onclick="showPage('dashboard');toggleMobileNav()">Dashboard</button>
   <button class="mobile-nav-link" onclick="showPage('deposit');toggleMobileNav()">Deposit</button>
   <button class="mobile-nav-link" onclick="showPage('borrow');toggleMobileNav()">Borrow</button>
