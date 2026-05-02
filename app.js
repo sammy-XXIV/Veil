@@ -492,16 +492,25 @@ const CWETH_ABI = [
 ]
 
 async function loadCwethBalance() {
+  console.log('[BALANCE] loadCwethBalance called | signer:', signer, '| provider:', provider)
   openModal('balance-modal')
-  if (!signer) return
+
   const el = document.getElementById('balance-modal-value')
   const usdEl = document.getElementById('balance-modal-usd')
+
+  if (!signer) {
+    console.warn('[BALANCE] signer is null — wallet not connected')
+    el.textContent = '—'
+    if (usdEl) usdEl.textContent = 'Connect wallet first'
+    return
+  }
+
   el.textContent = '...'
   if (usdEl) usdEl.textContent = ''
 
   try {
     const userAddress = await signer.getAddress()
-    console.log('[BALANCE] userAddress:', userAddress)
+    console.log('[BALANCE] signer type:', typeof signer, '| userAddress:', userAddress)
 
     // Step 1: get encrypted handle from cWETH contract
     const cweth = new ethers.Contract(CWETH_ADDRESS, CWETH_ABI, provider)
