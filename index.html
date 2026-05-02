@@ -1049,7 +1049,7 @@ nav {
               <div style="font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px">—</div>
               <div style="font-size:13px;color:var(--text2)">cWETH</div>
             </div>
-            <button id="show-balance-btn" class="btn btn-ghost" onclick="openModal('balance-modal')" style="font-size:12px">View Balance</button>
+            <button id="show-balance-btn" class="btn btn-ghost" onclick="document.getElementById('balance-modal').style.display='flex'; document.getElementById('balance-modal').style.position='fixed'; document.getElementById('balance-modal').style.inset='0'; document.getElementById('balance-modal').style.zIndex='99999'; document.getElementById('balance-modal').style.background='rgba(0,0,0,0.9)'; document.getElementById('balance-modal').style.alignItems='center'; document.getElementById('balance-modal').style.justifyContent='center';" style="font-size:12px">View Balance</button>
           </div>
         </div>
       </div>
