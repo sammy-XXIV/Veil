@@ -291,8 +291,13 @@ async function handleDeposit() {
     let hasPos = false
     try { hasPos = await contract.hasPosition(currentUser) } catch {}
     console.log('[DEPOSIT] hasPosition:', hasPos)
-    console.log('[DEPOSIT] calling', hasPos ? 'addCollateral' : 'openPosition',
-      '| handle:', handleBytes32, '| plainAmount:', amountInt)
+
+    // ── PRE-CALL DEBUG ──
+    console.log('[DEPOSIT] handle value   :', handleBytes32)
+    console.log('[DEPOSIT] handle length  :', handleBytes32.length, '(should be 66: 0x + 64 hex chars)')
+    console.log('[DEPOSIT] inputProof[0:20]:', inputProof?.slice(0, 20))
+    console.log('[DEPOSIT] plainAmount    :', amountInt)
+    console.log('[DEPOSIT] calling        :', hasPos ? 'addCollateral' : 'openPosition')
 
     const tx = hasPos
       ? await contract.addCollateral(handleBytes32, inputProof, BigInt(amountInt), { gasLimit: 1_000_000n })
