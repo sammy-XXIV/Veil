@@ -273,14 +273,13 @@ async function handleDeposit() {
     // Step 2: call backend to encrypt
     advanceFheStep(2)
 
-    // ── ADDRESS DEBUG ──
+    // Always derive address from signer — cached currentUser can differ in OKX/multi-wallet setups
+    const userAddress = await signer.getAddress()
     const wp = getWalletProvider()
-    const selectedAddr = wp?.selectedAddress || 'n/a'
-    const signerAddr = await signer.getAddress().catch(() => 'error')
-    console.log('[DEPOSIT] currentUser (sent to backend):', currentUser)
-    console.log('[DEPOSIT] provider.selectedAddress     :', selectedAddr)
-    console.log('[DEPOSIT] signer.getAddress()          :', signerAddr)
-    console.log('[DEPOSIT] addresses match?', currentUser === signerAddr ? 'YES' : 'NO — MISMATCH!')
+    console.log('[DEPOSIT] signer.getAddress()      :', userAddress)
+    console.log('[DEPOSIT] provider.selectedAddress :', wp?.selectedAddress || 'n/a')
+    console.log('[DEPOSIT] cached currentUser       :', currentUser)
+    console.log('[DEPOSIT] using for backend        :', userAddress)
 
     const encryptRes = await fetch(`${BACKEND_URL}/encrypt`, {
       method: 'POST',
@@ -288,7 +287,7 @@ async function handleDeposit() {
       body: JSON.stringify({
         amount: amountInt,
         contractAddress: CONTRACT_ADDRESS,
-        userAddress: currentUser,
+        userAddress,
       }),
     })
     const encryptBody = await encryptRes.json()
@@ -315,7 +314,7 @@ async function handleDeposit() {
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
 
     let hasPos = false
-    try { hasPos = await contract.hasPosition(currentUser) } catch {}
+    try { hasPos = await contract.hasPosition(userAddress) } catch {}
     console.log('[DEPOSIT] hasPosition:', hasPos)
 
     // ── PRE-CALL DEBUG ──
