@@ -1202,6 +1202,9 @@ async function connectWallet() {
 
     provider = new ethers.BrowserProvider(walletProvider);
     signer = await provider.getSigner();
+    window.signer = signer;
+    window.provider = provider;
+    window._state = { signer, provider, currentUser };
 
     console.log('[WALLET] connected via', window.okxwallet ? 'OKX' : 'window.ethereum',
       '| address:', currentUser)
@@ -1220,6 +1223,9 @@ async function disconnectWallet() {
   currentUser = null;
   provider = null;
   signer = null;
+  window.signer = null;
+  window.provider = null;
+  window._state = { signer: null, provider: null, currentUser: null };
   updateUI();
   showPage('connect');
   closeModal('account-modal');
@@ -1804,6 +1810,9 @@ window.addEventListener('load', async () => {
       currentUser = accounts[0];
       provider = new ethers.BrowserProvider(wp);
       signer = await provider.getSigner();
+      window.signer = signer;
+      window.provider = provider;
+      window._state = { signer, provider, currentUser };
       await checkNetwork();
       updateUI();
     }
