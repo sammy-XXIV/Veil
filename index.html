@@ -1049,7 +1049,7 @@ nav {
               <div style="font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px">—</div>
               <div style="font-size:13px;color:var(--text2)">cWETH</div>
             </div>
-            <button id="show-balance-btn" class="btn btn-ghost" onclick="loadCwethBalance()" style="font-size:12px">View Balance</button>
+            <button id="show-balance-btn" class="btn btn-ghost" onclick="loadCwethBalance()" style="font-size:12px">View Balance 🔓</button>
           </div>
         </div>
       </div>
@@ -1298,27 +1298,41 @@ function showPage(pageName) {
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) { console.error('[MODAL] not found:', modalId); return; }
+  modal.removeAttribute('style');
+  modal.style.cssText = [
+    'display:flex!important',
+    'position:fixed!important',
+    'top:0!important',
+    'left:0!important',
+    'right:0!important',
+    'bottom:0!important',
+    'width:100%!important',
+    'height:100%!important',
+    'z-index:9999999!important',
+    'align-items:center!important',
+    'justify-content:center!important',
+    'background:rgba(5,5,6,0.92)!important',
+    'padding:24px!important',
+    'overflow-y:auto!important',
+    'visibility:visible!important',
+    'opacity:1!important',
+    'pointer-events:auto!important',
+  ].join(';');
   modal.classList.add('open');
-  modal.style.display = 'flex';
-  modal.style.position = 'fixed';
-  modal.style.inset = '0';
-  modal.style.zIndex = '99999';
-  modal.style.alignItems = 'center';
-  modal.style.justifyContent = 'center';
-  modal.style.background = 'rgba(5,5,6,0.92)';
-  console.log('[MODAL] opened:', modalId);
+  console.log('[MODAL] opened:', modalId, '| display now:', getComputedStyle(modal).display);
 }
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
   modal.classList.remove('open');
-  modal.style.display = 'none';
+  modal.removeAttribute('style');
+  modal.style.setProperty('display', 'none', 'important');
 }
 
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) {
-    e.target.classList.remove('open');
+    closeModal(e.target.id);
   }
 });
 
