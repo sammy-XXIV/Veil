@@ -171,13 +171,25 @@ function copyAddress() {
 
 // ─── FAUCET & WALLET ACTIONS ───
 async function handleFaucet() {
-  if (!currentUser) {
-    showToast('Connect wallet first', 'error');
-    return;
+  if (!signer) {
+    showToast('Connect wallet first', 'error')
+    return
   }
-  
-  showToast('Faucet action triggered (implement backend)', 'info');
-  // TODO: Implement actual faucet logic
+  showToast('Requesting cWETH from faucet...', 'info')
+  try {
+    const userAddress = await signer.getAddress()
+    const res = await fetch(`${BACKEND_URL}/faucet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userAddress }),
+    })
+    const body = await res.json()
+    if (!res.ok || !body.success) throw new Error(body.error || res.status)
+    showToast(`Faucet sent! Tx: ${body.txHash?.slice(0, 12)}...`, 'success')
+  } catch (err) {
+    console.error('[FAUCET] error:', err)
+    showToast(`Faucet failed: ${err.message}`, 'error')
+  }
 }
 
 async function addCwethToWallet() {
@@ -209,6 +221,8 @@ const CONTRACT_ADDRESS = '0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB'
 const CONTRACT_ABI = [
   'function openPosition(bytes32 encryptedAmount, bytes inputProof, uint256 plainAmount) external',
   'function addCollateral(bytes32 encryptedAmount, bytes inputProof, uint256 plainAmount) external',
+  'function borrow(bytes32 encryptedAmount, bytes inputProof, uint256 plainAmount) external',
+  'function repay(bytes32 encryptedAmount, bytes inputProof, uint256 plainAmount) external',
   'function hasPosition(address user) external view returns (bool)',
   'function closePosition() external',
   'function getCollateral(address user) external view returns (uint256)',
@@ -351,21 +365,140 @@ async function handleDeposit() {
   }
 }
 
-async function handleClosePosition() {
-  if (!signer) return;
-  
+async function handleBorrow() {
+  if (!signer) { showToast('Connect wallet first', 'error'); return }
+  const input = document.getElementById('borrow-amount-input')
+  const rawAmount = parseFloat(input?.value)
+  if (!rawAmount || rawAmount <= 0) { showToast('Enter a valid amount', 'error'); return }
+  const amountInt = Math.round(rawAmount)
+  if (amountInt <= 0) { showToast('Amount must be at least 1', 'error'); return }
+
+  showFheModal('Borrowing USDC', 'Encrypting borrow amount with FHE...')
   try {
-    showFheModal('Closing Position', 'Please wait while we close your position...');
-    
-    // TODO: Implement close position logic
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    closeFheModal();
-    showToast('Position closed! ✨', 'success');
-  } catch (error) {
-    console.error('Close position error:', error);
-    closeFheModal();
-    showToast('Failed to close position', 'error');
+    advanceFheStep(2)
+    const userAddress = await signer.getAddress()
+    console.log('[BORROW] userAddress:', userAddress, '| amount:', amountInt)
+
+    const encryptRes = await fetch(`${BACKEND_URL}/encrypt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amountInt, contractAddress: CONTRACT_ADDRESS, userAddress }),
+    })
+    const encryptBody = await encryptRes.json()
+    if (!encryptRes.ok || !encryptBody.success) throw new Error(`Encrypt failed: ${encryptBody.error || encryptRes.status}`)
+
+    const { handle, inputProof } = encryptBody
+    const handleBytes32 = handle.startsWith('0x') ? handle : `0x${handle}`
+    console.log('[BORROW] handle:', handleBytes32, '| inputProof:', inputProof?.slice(0, 20), '...')
+
+    advanceFheStep(3)
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
+    const tx = await contract.borrow(handleBytes32, inputProof, BigInt(amountInt), { gasLimit: 2_000_000n })
+    console.log('[BORROW] tx sent:', tx.hash)
+
+    advanceFheStep(4)
+    const receipt = await tx.wait()
+    console.log('[BORROW] confirmed block:', receipt.blockNumber)
+
+    closeFheModal()
+    showToast(`Borrowed ${amountInt} USDC!`, 'success')
+    input.value = ''
+    showPage('dashboard')
+  } catch (err) {
+    const msg = decodeRevertError(err)
+    console.error('[BORROW] error:', err)
+    const activeStep = document.querySelector('.fhe-step.active')
+    if (activeStep) { activeStep.classList.remove('active'); activeStep.classList.add('error') }
+    setTimeout(closeFheModal, 2500)
+    showToast(msg, 'error')
+  }
+}
+
+async function handleRepay() {
+  if (!signer) { showToast('Connect wallet first', 'error'); return }
+  const input = document.getElementById('repay-amount-input')
+  const rawAmount = parseFloat(input?.value)
+  if (!rawAmount || rawAmount <= 0) { showToast('Enter a valid amount', 'error'); return }
+  const amountInt = Math.round(rawAmount)
+  if (amountInt <= 0) { showToast('Amount must be at least 1', 'error'); return }
+
+  showFheModal('Repaying Debt', 'Encrypting repay amount with FHE...')
+  try {
+    advanceFheStep(2)
+    const userAddress = await signer.getAddress()
+    console.log('[REPAY] userAddress:', userAddress, '| amount:', amountInt)
+
+    const encryptRes = await fetch(`${BACKEND_URL}/encrypt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amountInt, contractAddress: CONTRACT_ADDRESS, userAddress }),
+    })
+    const encryptBody = await encryptRes.json()
+    if (!encryptRes.ok || !encryptBody.success) throw new Error(`Encrypt failed: ${encryptBody.error || encryptRes.status}`)
+
+    const { handle, inputProof } = encryptBody
+    const handleBytes32 = handle.startsWith('0x') ? handle : `0x${handle}`
+    console.log('[REPAY] handle:', handleBytes32, '| inputProof:', inputProof?.slice(0, 20), '...')
+
+    advanceFheStep(3)
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
+    const tx = await contract.repay(handleBytes32, inputProof, BigInt(amountInt), { gasLimit: 2_000_000n })
+    console.log('[REPAY] tx sent:', tx.hash)
+
+    advanceFheStep(4)
+    const receipt = await tx.wait()
+    console.log('[REPAY] confirmed block:', receipt.blockNumber)
+
+    closeFheModal()
+    showToast(`Repaid ${amountInt} USDC!`, 'success')
+    input.value = ''
+    showPage('dashboard')
+  } catch (err) {
+    const msg = decodeRevertError(err)
+    console.error('[REPAY] error:', err)
+    const activeStep = document.querySelector('.fhe-step.active')
+    if (activeStep) { activeStep.classList.remove('active'); activeStep.classList.add('error') }
+    setTimeout(closeFheModal, 2500)
+    showToast(msg, 'error')
+  }
+}
+
+async function handleClosePosition() {
+  if (!signer) { showToast('Connect wallet first', 'error'); return }
+  showFheModal('Closing Position', 'Sending close transaction...')
+  try {
+    advanceFheStep(3)
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
+    const tx = await contract.closePosition({ gasLimit: 1_000_000n })
+    console.log('[CLOSE] tx sent:', tx.hash)
+    advanceFheStep(4)
+    await tx.wait()
+    closeFheModal()
+    showToast('Position closed!', 'success')
+    showPage('dashboard')
+  } catch (err) {
+    const msg = decodeRevertError(err)
+    console.error('[CLOSE] error:', err)
+    const activeStep = document.querySelector('.fhe-step.active')
+    if (activeStep) { activeStep.classList.remove('active'); activeStep.classList.add('error') }
+    setTimeout(closeFheModal, 2500)
+    showToast(msg, 'error')
+  }
+}
+
+async function loadCwethBalance() {
+  openModal('balance-modal')
+  if (!signer) return
+  const el = document.getElementById('balance-modal-value')
+  try {
+    el.textContent = '...'
+    const userAddress = await signer.getAddress()
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider)
+    const raw = await contract.getCollateral(userAddress)
+    el.textContent = raw.toString()
+  } catch (err) {
+    console.error('[BALANCE] error:', err)
+    el.textContent = '—'
   }
 }
 
