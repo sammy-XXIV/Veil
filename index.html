@@ -1181,41 +1181,35 @@ const SEPOLIA_RPC = 'https://sepolia.drpc.org';
 
 // ─── WALLET CONNECTION ───
 
-// Resolve the active wallet provider — OKX injects window.okxwallet,
-// MetaMask and most others use window.ethereum.
+// Use window.ethereum directly — works with MetaMask, OKX, Coinbase, and any injected wallet
 function getWalletProvider() {
-  if (window.okxwallet) return window.okxwallet
-  if (window.ethereum) return window.ethereum
-  return null
+  return window.ethereum || null
 }
 
 async function connectWallet() {
-  const walletProvider = getWalletProvider()
-  if (!walletProvider) {
-    showToast('No wallet detected. Install MetaMask or OKX Wallet.', 'error');
+  if (!window.ethereum) {
+    showToast('No wallet detected. Install MetaMask or another injected wallet.', 'error');
     return;
   }
 
   try {
-    const accounts = await walletProvider.request({ method: 'eth_requestAccounts' });
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     currentUser = accounts[0];
 
-    provider = new ethers.BrowserProvider(walletProvider);
+    provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     window.signer = signer;
     window.provider = provider;
     window._state = { signer, provider, currentUser };
 
-    console.log('[CONNECT] signer set:', !!signer, '| window.signer set:', !!window.signer)
-    console.log('[WALLET] connected via', window.okxwallet ? 'OKX' : 'window.ethereum',
-      '| address:', currentUser)
+    console.log('[CONNECT] signer set:', !!signer, '| window.signer set:', !!window.signer, '| address:', currentUser)
 
     await checkNetwork();
     updateUI();
     showPage('dashboard');
-    showToast('Wallet connected! 🔗', 'success');
+    showToast('Wallet connected!', 'success');
   } catch (error) {
-    console.error('Wallet connection error:', error);
+    console.error('[CONNECT] error:', error);
     showToast('Failed to connect wallet', 'error');
   }
 }
@@ -1303,16 +1297,23 @@ function showPage(pageName) {
 // ─── MODAL MANAGEMENT ───
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.add('open');
-  }
+  if (!modal) { console.error('[MODAL] not found:', modalId); return; }
+  modal.classList.add('open');
+  modal.style.display = 'flex';
+  modal.style.position = 'fixed';
+  modal.style.inset = '0';
+  modal.style.zIndex = '99999';
+  modal.style.alignItems = 'center';
+  modal.style.justifyContent = 'center';
+  modal.style.background = 'rgba(5,5,6,0.92)';
+  console.log('[MODAL] opened:', modalId);
 }
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.remove('open');
-  }
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.style.display = 'none';
 }
 
 document.addEventListener('click', (e) => {
@@ -1807,21 +1808,25 @@ function updateUI() {
 
 // ─── INITIALIZATION ───
 window.addEventListener('load', async () => {
-  const wp = getWalletProvider()
-  if (wp) {
-    const accounts = await wp.request({ method: 'eth_accounts' });
-    if (accounts.length > 0) {
-      currentUser = accounts[0];
-      provider = new ethers.BrowserProvider(wp);
-      signer = await provider.getSigner();
-      window.signer = signer;
-      window.provider = provider;
-      window._state = { signer, provider, currentUser };
-      await checkNetwork();
-      updateUI();
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        currentUser = accounts[0];
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        window.signer = signer;
+        window.provider = provider;
+        window._state = { signer, provider, currentUser };
+        console.log('[LOAD] auto-reconnected | signer:', !!signer, '| address:', currentUser)
+        await checkNetwork();
+        updateUI();
+      }
+    } catch (e) {
+      console.warn('[LOAD] auto-reconnect failed:', e.message)
     }
 
-    wp.on?.('accountsChanged', (accounts) => {
+    window.ethereum.on?.('accountsChanged', (accounts) => {
       if (accounts.length === 0) {
         disconnectWallet();
       } else if (accounts[0] !== currentUser) {
@@ -1830,7 +1835,7 @@ window.addEventListener('load', async () => {
       }
     });
 
-    wp.on?.('chainChanged', () => {
+    window.ethereum.on?.('chainChanged', () => {
       checkNetwork();
       window.location.reload();
     });
