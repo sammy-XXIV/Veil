@@ -190,12 +190,36 @@ async function addCwethToWallet() {
 // ─── POSITION MANAGEMENT ───
 
 const CONTRACT_ADDRESS = '0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB'
+// Contract is unverified — using recovered selectors from bytecode.
+// addLiquidity(uint256) = 0x51c6590a is the likely deposit entrypoint.
+// Update these signatures once contract source is available.
 const CONTRACT_ABI = [
-  'function openPosition(bytes32 handle, bytes calldata inputProof) external',
-  'function addCollateral(bytes32 handle, bytes calldata inputProof) external',
-  'function hasPosition(address user) external view returns (bool)',
+  'function addLiquidity(uint256 encryptedHandle) external',
+  'function closePosition() external',
+  'function getCollateral(address user) external view returns (uint256)',
+  'function getDebt(address user) external view returns (uint256)',
+  'function totalPositions() external view returns (uint256)',
 ]
 const BACKEND_URL = 'https://veil-backend-2gki.onrender.com'
+
+// Known custom error selectors (FHEVM + contract)
+const KNOWN_ERRORS = {
+  '0x5ff91cdc': 'FHEVM: encrypted input proof rejected — handle or proof invalid for this contract',
+  '0x09bde339': 'InvalidProof()',
+  '0xaac34bd8': 'NotAllowedToHandleCiphertext()',
+  '0x3d693ada': 'NotAllowed()',
+  '0x9fd8296a': 'ACLNotAllowed()',
+  '0xfb8f41b2': 'ERC20InsufficientAllowance',
+  '0xe450d38c': 'ERC20InsufficientBalance',
+}
+
+function decodeRevertError(err) {
+  const data = err?.data || err?.error?.data || err?.info?.error?.data || ''
+  if (!data) return err.message || 'Transaction reverted'
+  const sel = typeof data === 'string' ? data.slice(0, 10).toLowerCase() : ''
+  if (KNOWN_ERRORS[sel]) return `Revert: ${KNOWN_ERRORS[sel]}`
+  return `Revert ${sel}: ${data.slice(0, 80)}`
+}
 
 function advanceFheStep(stepNum) {
   for (let i = 1; i <= 4; i++) {
@@ -213,60 +237,86 @@ async function handleDeposit() {
   }
 
   const input = document.getElementById('deposit-amount-input')
-  const amount = parseFloat(input?.value)
-  if (!amount || amount <= 0) {
+  const rawAmount = parseFloat(input?.value)
+  if (!rawAmount || rawAmount <= 0) {
     showToast('Enter a valid amount', 'error')
+    return
+  }
+
+  // Backend requires integer — round to whole token units
+  const amountInt = Math.round(rawAmount)
+  if (amountInt <= 0) {
+    showToast('Amount must be at least 1 cWETH', 'error')
     return
   }
 
   showFheModal('Depositing Collateral', 'Encrypting amount with FHE...')
 
   try {
-    // Step 1 — already active from showFheModal
+    // Step 1 — already active from showFheModal (SDK init)
+    console.log('[DEPOSIT] amount raw:', rawAmount, '→ integer:', amountInt)
 
     // Step 2: call backend to encrypt
     advanceFheStep(2)
-    const res = await fetch(`${BACKEND_URL}/encrypt`, {
+    const encryptRes = await fetch(`${BACKEND_URL}/encrypt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount,
+        amount: amountInt,
         contractAddress: CONTRACT_ADDRESS,
         userAddress: currentUser,
       }),
     })
-    if (!res.ok) throw new Error(`Encrypt failed: ${res.status} ${await res.text()}`)
-    const { handle, inputProof } = await res.json()
-    if (!handle || !inputProof) throw new Error('Invalid response from encrypt endpoint')
+    const encryptBody = await encryptRes.json()
+    if (!encryptRes.ok || !encryptBody.success) {
+      throw new Error(`Encrypt failed: ${encryptBody.error || encryptRes.status}`)
+    }
 
-    // Step 3: sign & send transaction
+    const { handle, inputProof } = encryptBody
+
+    // Validate handle: must be 0x + 64 hex chars (32 bytes)
+    const handleClean = handle?.startsWith('0x') ? handle : `0x${handle}`
+    const handleHex = handleClean.replace(/^0x/, '')
+    if (handleHex.length !== 64) {
+      throw new Error(`Bad handle length: got ${handleHex.length} hex chars, expected 64`)
+    }
+    const handleBytes32 = `0x${handleHex}` // correct bytes32 format
+
+    console.log('[DEPOSIT] handle:', handleBytes32, '(', handleHex.length, 'hex chars =', handleHex.length / 2, 'bytes)')
+    console.log('[DEPOSIT] inputProof:', inputProof?.slice(0, 20), '... length:', inputProof?.length)
+    console.log('[DEPOSIT] inputProof bytes:', (inputProof?.length - 2) / 2)
+
+    // Step 3: send transaction — contract uses addLiquidity(uint256 encryptedHandle)
+    // NOTE: if this reverts, the function signature may need updating once contract is verified.
     advanceFheStep(3)
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
 
-    // Determine whether to openPosition or addCollateral
-    let hasPos = false
-    try { hasPos = await contract.hasPosition(currentUser) } catch {}
+    // Pass handle as uint256 (numeric interpretation of the bytes32 handle)
+    const handleAsUint256 = BigInt(handleBytes32)
+    console.log('[DEPOSIT] calling addLiquidity with handle as uint256:', handleAsUint256.toString())
 
-    const tx = hasPos
-      ? await contract.addCollateral(handle, inputProof, { gasLimit: 1000000 })
-      : await contract.openPosition(handle, inputProof, { gasLimit: 1000000 })
+    const tx = await contract.addLiquidity(handleAsUint256, { gasLimit: 1_000_000n })
+    console.log('[DEPOSIT] tx sent:', tx.hash)
 
     // Step 4: wait for confirmation
     advanceFheStep(4)
-    await tx.wait()
+    const receipt = await tx.wait()
+    console.log('[DEPOSIT] confirmed in block:', receipt.blockNumber)
 
     closeFheModal()
-    showToast(`Deposited ${amount} cWETH! 🔒`, 'success')
+    showToast(`Deposited ${amountInt} cWETH! 🔒`, 'success')
     input.value = ''
     showPage('dashboard')
 
   } catch (err) {
-    console.error('Deposit error:', err)
-    // Mark current active step as error
+    const msg = decodeRevertError(err)
+    console.error('[DEPOSIT] error:', err)
+    console.error('[DEPOSIT] decoded:', msg)
+    console.error('[DEPOSIT] raw data:', err?.data || err?.error?.data || 'none')
     const activeStep = document.querySelector('.fhe-step.active')
     if (activeStep) { activeStep.classList.remove('active'); activeStep.classList.add('error') }
-    setTimeout(closeFheModal, 2000)
-    showToast(err.message || 'Deposit failed', 'error')
+    setTimeout(closeFheModal, 2500)
+    showToast(msg, 'error')
   }
 }
 
