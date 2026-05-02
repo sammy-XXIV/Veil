@@ -486,19 +486,80 @@ async function handleClosePosition() {
   }
 }
 
+const CWETH_ADDRESS = '0x46208622DA27d91db4f0393733C8BA082ed83158'
+const CWETH_ABI = [
+  'function confidentialBalanceOf(address user) external view returns (bytes32)',
+]
+
 async function loadCwethBalance() {
   openModal('balance-modal')
   if (!signer) return
   const el = document.getElementById('balance-modal-value')
+  const usdEl = document.getElementById('balance-modal-usd')
+  el.textContent = '...'
+  if (usdEl) usdEl.textContent = ''
+
   try {
-    el.textContent = '...'
     const userAddress = await signer.getAddress()
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider)
-    const raw = await contract.getCollateral(userAddress)
-    el.textContent = raw.toString()
+    console.log('[BALANCE] userAddress:', userAddress)
+
+    // Step 1: get encrypted handle from cWETH contract
+    const cweth = new ethers.Contract(CWETH_ADDRESS, CWETH_ABI, provider)
+    const handle = await cweth.confidentialBalanceOf(userAddress)
+    console.log('[BALANCE] encrypted handle:', handle)
+
+    // Step 2: request decrypt parameters from backend
+    const prepareRes = await fetch(`${BACKEND_URL}/decrypt-prepare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handle, contractAddress: CWETH_ADDRESS, userAddress }),
+    })
+    const prepareBody = await prepareRes.json()
+    if (!prepareRes.ok || !prepareBody.success) {
+      throw new Error(`decrypt-prepare failed: ${prepareBody.error || prepareRes.status}`)
+    }
+    const { keypair, eip712, startTimestamp, durationDays } = prepareBody
+    console.log('[BALANCE] keypair.publicKey[:20]:', keypair.publicKey?.slice(0, 20))
+    console.log('[BALANCE] eip712 domain:', eip712.domain)
+
+    // Step 3: sign the EIP-712 typed data
+    // ethers v6 signTypedData: (domain, types without EIP712Domain, message)
+    const { domain, types: allTypes, message } = eip712
+    const { EIP712Domain: _, ...signTypes } = allTypes  // strip EIP712Domain — ethers adds it
+    // domain.chainId must be a number/bigint for ethers
+    const signDomain = { ...domain, chainId: Number(domain.chainId) }
+    console.log('[BALANCE] signing typed data, primaryType: UserDecryptRequestVerification')
+    const signature = await signer.signTypedData(signDomain, signTypes, message)
+    console.log('[BALANCE] signature:', signature.slice(0, 20), '...')
+
+    // Step 4: POST to decrypt-balance with signature + keypair
+    const decryptRes = await fetch(`${BACKEND_URL}/decrypt-balance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        handle,
+        contractAddress: CWETH_ADDRESS,
+        userAddress,
+        signature,
+        keypair,
+        startTimestamp,
+        durationDays,
+      }),
+    })
+    const decryptBody = await decryptRes.json()
+    if (!decryptRes.ok || !decryptBody.success) {
+      throw new Error(`decrypt-balance failed: ${decryptBody.error || decryptRes.status}`)
+    }
+    console.log('[BALANCE] decrypted response:', decryptBody)
+
+    const balance = decryptBody.balance ?? decryptBody.value ?? decryptBody.result ?? '—'
+    el.textContent = balance.toString()
+    if (usdEl) usdEl.textContent = 'cWETH (decrypted via FHE)'
+
   } catch (err) {
     console.error('[BALANCE] error:', err)
     el.textContent = '—'
+    if (usdEl) usdEl.textContent = err.message
   }
 }
 
