@@ -519,8 +519,9 @@ async function loadCwethBalance() {
       throw new Error(`decrypt-prepare failed: ${prepareBody.error || prepareRes.status}`)
     }
     const { keypair, eip712, startTimestamp, durationDays } = prepareBody
-    console.log('[BALANCE] keypair.publicKey[:20]:', keypair.publicKey?.slice(0, 20))
     console.log('[BALANCE] eip712 domain:', eip712.domain)
+    console.log('[BALANCE] keypair.publicKey  type:', typeof keypair.publicKey,  '| first 20:', keypair.publicKey?.slice(0, 20))
+    console.log('[BALANCE] keypair.privateKey type:', typeof keypair.privateKey, '| first 20:', keypair.privateKey?.slice(0, 20))
 
     // Step 3: sign the EIP-712 typed data
     // ethers v6 signTypedData: (domain, types without EIP712Domain, message)
@@ -533,6 +534,15 @@ async function loadCwethBalance() {
     console.log('[BALANCE] signature:', signature.slice(0, 20), '...')
 
     // Step 4: POST to decrypt-balance with signature + keypair
+    console.log('[BALANCE] → decrypt-balance payload:')
+    console.log('  userAddress     :', userAddress)
+    console.log('  handle          :', handle)
+    console.log('  contractAddress :', CWETH_ADDRESS)
+    console.log('  startTimestamp  :', startTimestamp, typeof startTimestamp)
+    console.log('  durationDays    :', durationDays,   typeof durationDays)
+    console.log('  keypair.publicKey  type:', typeof keypair.publicKey,  'len:', keypair.publicKey?.length)
+    console.log('  keypair.privateKey type:', typeof keypair.privateKey, 'len:', keypair.privateKey?.length)
+
     const decryptRes = await fetch(`${BACKEND_URL}/decrypt-balance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
