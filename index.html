@@ -1206,6 +1206,7 @@ async function connectWallet() {
     window.provider = provider;
     window._state = { signer, provider, currentUser };
 
+    console.log('[CONNECT] signer set:', !!signer, '| window.signer set:', !!window.signer)
     console.log('[WALLET] connected via', window.okxwallet ? 'OKX' : 'window.ethereum',
       '| address:', currentUser)
 
@@ -1637,13 +1638,16 @@ async function handleClosePosition() {
 }
 
 async function loadCwethBalance() {
-  console.log('[BALANCE] loadCwethBalance called | signer:', signer, '| provider:', provider)
+  // Resolve signer — fall back to window.signer if module-level variable is null
+  const _signer = signer || window.signer
+  const _provider = provider || window.provider
+  console.log('[BALANCE] loadCwethBalance called | signer:', !!_signer, '| provider:', !!_provider)
   openModal('balance-modal')
 
   const el = document.getElementById('balance-modal-value')
   const usdEl = document.getElementById('balance-modal-usd')
 
-  if (!signer) {
+  if (!_signer) {
     console.warn('[BALANCE] signer is null — wallet not connected')
     el.textContent = '—'
     if (usdEl) usdEl.textContent = 'Connect wallet first'
@@ -1654,10 +1658,10 @@ async function loadCwethBalance() {
   if (usdEl) usdEl.textContent = ''
 
   try {
-    const userAddress = await signer.getAddress()
-    console.log('[BALANCE] signer type:', typeof signer, '| userAddress:', userAddress)
+    const userAddress = await _signer.getAddress()
+    console.log('[BALANCE] signer type:', typeof _signer, '| userAddress:', userAddress)
 
-    const cweth = new ethers.Contract(CWETH_ADDRESS, CWETH_ABI, provider)
+    const cweth = new ethers.Contract(CWETH_ADDRESS, CWETH_ABI, _provider)
     const handle = await cweth.confidentialBalanceOf(userAddress)
     console.log('[BALANCE] encrypted handle:', handle)
 
@@ -1679,7 +1683,7 @@ async function loadCwethBalance() {
     const { EIP712Domain: _, ...signTypes } = allTypes
     const signDomain = { ...domain, chainId: Number(domain.chainId) }
     console.log('[BALANCE] signing typed data, primaryType: UserDecryptRequestVerification')
-    const signature = await signer.signTypedData(signDomain, signTypes, message)
+    const signature = await _signer.signTypedData(signDomain, signTypes, message)
     console.log('[BALANCE] signature:', signature.slice(0, 20), '...')
 
     console.log('[BALANCE] → decrypt-balance payload:')
