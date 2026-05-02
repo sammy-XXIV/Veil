@@ -188,6 +188,88 @@ async function addCwethToWallet() {
 }
 
 // ─── POSITION MANAGEMENT ───
+
+const CONTRACT_ADDRESS = '0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB'
+const CONTRACT_ABI = [
+  'function openPosition(bytes32 handle, bytes calldata inputProof) external',
+  'function addCollateral(bytes32 handle, bytes calldata inputProof) external',
+  'function hasPosition(address user) external view returns (bool)',
+]
+const BACKEND_URL = 'https://veil-backend-2gki.onrender.com'
+
+function advanceFheStep(stepNum) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`fhe-step-${i}`)
+    el.classList.remove('active', 'done', 'error')
+    if (i < stepNum) el.classList.add('done')
+    else if (i === stepNum) el.classList.add('active')
+  }
+}
+
+async function handleDeposit() {
+  if (!signer || !currentUser) {
+    showToast('Connect wallet first', 'error')
+    return
+  }
+
+  const input = document.getElementById('deposit-amount-input')
+  const amount = parseFloat(input?.value)
+  if (!amount || amount <= 0) {
+    showToast('Enter a valid amount', 'error')
+    return
+  }
+
+  showFheModal('Depositing Collateral', 'Encrypting amount with FHE...')
+
+  try {
+    // Step 1 — already active from showFheModal
+
+    // Step 2: call backend to encrypt
+    advanceFheStep(2)
+    const res = await fetch(`${BACKEND_URL}/encrypt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        contractAddress: CONTRACT_ADDRESS,
+        userAddress: currentUser,
+      }),
+    })
+    if (!res.ok) throw new Error(`Encrypt failed: ${res.status} ${await res.text()}`)
+    const { handle, inputProof } = await res.json()
+    if (!handle || !inputProof) throw new Error('Invalid response from encrypt endpoint')
+
+    // Step 3: sign & send transaction
+    advanceFheStep(3)
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
+
+    // Determine whether to openPosition or addCollateral
+    let hasPos = false
+    try { hasPos = await contract.hasPosition(currentUser) } catch {}
+
+    const tx = hasPos
+      ? await contract.addCollateral(handle, inputProof, { gasLimit: 1000000 })
+      : await contract.openPosition(handle, inputProof, { gasLimit: 1000000 })
+
+    // Step 4: wait for confirmation
+    advanceFheStep(4)
+    await tx.wait()
+
+    closeFheModal()
+    showToast(`Deposited ${amount} cWETH! 🔒`, 'success')
+    input.value = ''
+    showPage('dashboard')
+
+  } catch (err) {
+    console.error('Deposit error:', err)
+    // Mark current active step as error
+    const activeStep = document.querySelector('.fhe-step.active')
+    if (activeStep) { activeStep.classList.remove('active'); activeStep.classList.add('error') }
+    setTimeout(closeFheModal, 2000)
+    showToast(err.message || 'Deposit failed', 'error')
+  }
+}
+
 async function handleClosePosition() {
   if (!signer) return;
   
