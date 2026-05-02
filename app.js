@@ -12,19 +12,32 @@ const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
 const SEPOLIA_RPC = 'https://sepolia.drpc.org';
 
 // ─── WALLET CONNECTION ───
+
+// Resolve the active wallet provider — OKX injects window.okxwallet,
+// MetaMask and most others use window.ethereum.
+function getWalletProvider() {
+  if (window.okxwallet) return window.okxwallet
+  if (window.ethereum) return window.ethereum
+  return null
+}
+
 async function connectWallet() {
-  if (!window.ethereum) {
-    showToast('MetaMask not detected. Please install MetaMask.', 'error');
+  const walletProvider = getWalletProvider()
+  if (!walletProvider) {
+    showToast('No wallet detected. Install MetaMask or OKX Wallet.', 'error');
     return;
   }
 
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const accounts = await walletProvider.request({ method: 'eth_requestAccounts' });
     currentUser = accounts[0];
-    
-    provider = new ethers.BrowserProvider(window.ethereum);
+
+    provider = new ethers.BrowserProvider(walletProvider);
     signer = await provider.getSigner();
-    
+
+    console.log('[WALLET] connected via', window.okxwallet ? 'OKX' : 'window.ethereum',
+      '| address:', currentUser)
+
     await checkNetwork();
     updateUI();
     showPage('dashboard');
@@ -46,11 +59,12 @@ async function disconnectWallet() {
 }
 
 async function checkNetwork() {
-  if (!window.ethereum) return;
-  
-  const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+  const wp = getWalletProvider()
+  if (!wp) return;
+
+  const chainId = await wp.request({ method: 'eth_chainId' });
   const wrongNetwork = document.getElementById('wrong-network');
-  
+
   if (chainId !== SEPOLIA_CHAIN_ID) {
     wrongNetwork.style.display = 'flex';
   } else {
@@ -59,10 +73,11 @@ async function checkNetwork() {
 }
 
 async function switchToSepolia() {
-  if (!window.ethereum) return;
-  
+  const wp = getWalletProvider()
+  if (!wp) return;
+
   try {
-    await window.ethereum.request({
+    await wp.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: SEPOLIA_CHAIN_ID }],
     });
@@ -70,7 +85,7 @@ async function switchToSepolia() {
   } catch (error) {
     if (error.code === 4902) {
       try {
-        await window.ethereum.request({
+        await wp.request({
           method: 'wallet_addEthereumChain',
           params: [
             {
@@ -166,10 +181,11 @@ async function handleFaucet() {
 }
 
 async function addCwethToWallet() {
-  if (!window.ethereum) return;
-  
+  const wp = getWalletProvider()
+  if (!wp) return;
+
   try {
-    await window.ethereum.request({
+    await wp.request({
       method: 'wallet_watchAsset',
       params: {
         type: 'ERC20',
@@ -436,30 +452,29 @@ function updateUI() {
 
 // ─── INITIALIZATION ───
 window.addEventListener('load', async () => {
-  if (window.ethereum) {
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  const wp = getWalletProvider()
+  if (wp) {
+    const accounts = await wp.request({ method: 'eth_accounts' });
     if (accounts.length > 0) {
       currentUser = accounts[0];
-      provider = new ethers.BrowserProvider(window.ethereum);
+      provider = new ethers.BrowserProvider(wp);
       signer = await provider.getSigner();
       await checkNetwork();
       updateUI();
     }
+
+    wp.on?.('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else if (accounts[0] !== currentUser) {
+        currentUser = accounts[0];
+        updateUI();
+      }
+    });
+
+    wp.on?.('chainChanged', () => {
+      checkNetwork();
+      window.location.reload();
+    });
   }
-  
-  // Listen to account changes
-  window.ethereum?.on('accountsChanged', (accounts) => {
-    if (accounts.length === 0) {
-      disconnectWallet();
-    } else if (accounts[0] !== currentUser) {
-      currentUser = accounts[0];
-      updateUI();
-    }
-  });
-  
-  // Listen to chain changes
-  window.ethereum?.on('chainChanged', () => {
-    checkNetwork();
-    window.location.reload();
-  });
 });
