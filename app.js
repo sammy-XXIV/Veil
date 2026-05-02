@@ -190,15 +190,13 @@ async function addCwethToWallet() {
 // ─── POSITION MANAGEMENT ───
 
 const CONTRACT_ADDRESS = '0x1689b2e699bD28Dc21A8442Ec8e3D39F5d52dDCB'
-// Contract is unverified — using recovered selectors from bytecode.
-// addLiquidity(uint256) = 0x51c6590a is the likely deposit entrypoint.
-// Update these signatures once contract source is available.
 const CONTRACT_ABI = [
-  'function addLiquidity(uint256 encryptedHandle) external',
+  'function openPosition(bytes32 encryptedAmount, bytes inputProof, uint256 plainAmount) external',
+  'function addCollateral(bytes32 encryptedAmount, bytes inputProof, uint256 plainAmount) external',
+  'function hasPosition(address user) external view returns (bool)',
   'function closePosition() external',
   'function getCollateral(address user) external view returns (uint256)',
   'function getDebt(address user) external view returns (uint256)',
-  'function totalPositions() external view returns (uint256)',
 ]
 const BACKEND_URL = 'https://veil-backend-2gki.onrender.com'
 
@@ -286,16 +284,19 @@ async function handleDeposit() {
     console.log('[DEPOSIT] inputProof:', inputProof?.slice(0, 20), '... length:', inputProof?.length)
     console.log('[DEPOSIT] inputProof bytes:', (inputProof?.length - 2) / 2)
 
-    // Step 3: send transaction — contract uses addLiquidity(uint256 encryptedHandle)
-    // NOTE: if this reverts, the function signature may need updating once contract is verified.
+    // Step 3: sign & send transaction
     advanceFheStep(3)
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
 
-    // Pass handle as uint256 (numeric interpretation of the bytes32 handle)
-    const handleAsUint256 = BigInt(handleBytes32)
-    console.log('[DEPOSIT] calling addLiquidity with handle as uint256:', handleAsUint256.toString())
+    let hasPos = false
+    try { hasPos = await contract.hasPosition(currentUser) } catch {}
+    console.log('[DEPOSIT] hasPosition:', hasPos)
+    console.log('[DEPOSIT] calling', hasPos ? 'addCollateral' : 'openPosition',
+      '| handle:', handleBytes32, '| plainAmount:', amountInt)
 
-    const tx = await contract.addLiquidity(handleAsUint256, { gasLimit: 1_000_000n })
+    const tx = hasPos
+      ? await contract.addCollateral(handleBytes32, inputProof, BigInt(amountInt), { gasLimit: 1_000_000n })
+      : await contract.openPosition(handleBytes32, inputProof, BigInt(amountInt), { gasLimit: 1_000_000n })
     console.log('[DEPOSIT] tx sent:', tx.hash)
 
     // Step 4: wait for confirmation
