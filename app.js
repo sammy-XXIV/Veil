@@ -272,6 +272,16 @@ async function handleDeposit() {
 
     // Step 2: call backend to encrypt
     advanceFheStep(2)
+
+    // ── ADDRESS DEBUG ──
+    const wp = getWalletProvider()
+    const selectedAddr = wp?.selectedAddress || 'n/a'
+    const signerAddr = await signer.getAddress().catch(() => 'error')
+    console.log('[DEPOSIT] currentUser (sent to backend):', currentUser)
+    console.log('[DEPOSIT] provider.selectedAddress     :', selectedAddr)
+    console.log('[DEPOSIT] signer.getAddress()          :', signerAddr)
+    console.log('[DEPOSIT] addresses match?', currentUser === signerAddr ? 'YES' : 'NO — MISMATCH!')
+
     const encryptRes = await fetch(`${BACKEND_URL}/encrypt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
